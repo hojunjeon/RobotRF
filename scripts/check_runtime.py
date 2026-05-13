@@ -8,7 +8,7 @@ def main() -> None:
     import torch
 
     gym.register_envs(gymnasium_robotics)
-    env = gym.make("FetchPickAndPlace-v3", render_mode="rgb_array")
+    env = gym.make("FetchPickAndPlace-v4", render_mode="rgb_array")
     obs, info = env.reset(seed=42)
     frame = env.render()
     env.close()

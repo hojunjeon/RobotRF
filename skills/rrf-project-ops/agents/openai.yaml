@@ -1,0 +1,4 @@
+interface:
+  display_name: "RRF Project Ops"
+  short_description: "Project operating rules for RRF development agents."
+  default_prompt: "Use $rrf-project-ops when developing, debugging, testing, or reporting work in this repository."

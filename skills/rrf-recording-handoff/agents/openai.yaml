@@ -1,0 +1,4 @@
+interface:
+  display_name: "RRF Recording Handoff"
+  short_description: "Evidence handoff rules for Notion and portfolio recording."
+  default_prompt: "Use $rrf-recording-handoff when recording development evidence for the Notion or portfolio agent."

@@ -16,6 +16,7 @@ def train_sac(
     output_dir: Path,
     tensorboard_log: Path | None = None,
     seed: int = 42,
+    progress_bar: bool = False,
 ):
     from stable_baselines3 import SAC
     from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
@@ -27,7 +28,7 @@ def train_sac(
         tensorboard_log=str(tensorboard_log) if tensorboard_log else None,
     )
     model = SAC("MultiInputPolicy", env, seed=seed, **config.kwargs)
-    model.learn(total_timesteps=total_timesteps, progress_bar=True)
+    model.learn(total_timesteps=total_timesteps, progress_bar=progress_bar)
     output_dir.mkdir(parents=True, exist_ok=True)
     checkpoint = output_dir / f"stage{stage}_sac.zip"
     model.save(checkpoint)

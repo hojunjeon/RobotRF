@@ -1,0 +1,3 @@
+display_name: Token Economy
+short_description: Keep AI agent context small while preserving evidence and correctness.
+default_prompt: Keep token-economy on by default for agent work; inspect only necessary context, compress tool output, answer briefly, keep evidence, and relax only for rich prose, raw logs, broad brainstorming, or high-risk analysis.

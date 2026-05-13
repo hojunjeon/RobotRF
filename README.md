@@ -36,9 +36,48 @@ MVP scene:
 
 The implementation is intentionally small so the RL pipeline, GoalEnv contract, HER reward behavior, and portfolio deliverables can be developed before adding heavier MuJoCo asset customization. The dependency set includes `gymnasium-robotics` and `mujoco` so the next step can replace the local kinematic environment with a direct Fetch/MuJoCo subclass once the MVP pipeline is stable.
 
+## Windows Quickstart
+
+The current local smoke-test path is Windows PowerShell with a project-local `.venv`.
+
+Check the bootstrap state:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check_windows_bootstrap.ps1
+```
+
+Create or repair the virtual environment:
+
+```powershell
+& 'C:\Users\SSAFY\AppData\Local\Python\pythoncore-3.14-64\python.exe' -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e .[dev]
+```
+
+Verify the runtime:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\check_runtime.py
+.\.venv\Scripts\python.exe -m pytest
+```
+
+Run the stage 1 smoke training path:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\train.py --stage 1 --algo sac --total-timesteps 1000 --output-dir checkpoints\smoke --tensorboard-log runs\smoke
+.\.venv\Scripts\python.exe scripts\evaluate.py --stage 1 --checkpoint checkpoints\smoke\stage1_sac.zip --episodes 5
+```
+
+The smoke run only proves the training loop, TensorBoard logging, checkpoint save, and checkpoint load path. It is not expected to reach a useful success rate.
+
 ## WSL2 Quickstart
 
-Run this project inside WSL2 Ubuntu 22.04, not directly in Windows PowerShell.
+Use WSL2 Ubuntu 22.04 for longer training runs if Windows file I/O or rendering becomes a bottleneck.
+
+If you are starting from Windows, run the bootstrap check first:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check_windows_bootstrap.ps1
+```
 
 From Windows PowerShell:
 
