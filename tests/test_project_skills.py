@@ -17,13 +17,17 @@ def test_project_skills_are_clone_local_and_complete() -> None:
         assert "TODO" not in text
 
 
-def test_agents_md_is_short_skill_router() -> None:
+def test_agents_md_routes_to_skills_and_keeps_operating_rules() -> None:
     text = Path("AGENTS.md").read_text(encoding="utf-8")
 
-    assert len(text.splitlines()) <= 35
     assert "skills/rrf-project-ops/SKILL.md" in text
     assert "skills/rrf-recording-handoff/SKILL.md" in text
     assert "skills/token-economy/SKILL.md" in text
+    assert "## Coding Behavior" in text
+    assert "Think Before Coding" in text
+    assert "Simplicity First" in text
+    assert "Surgical Changes" in text
+    assert "Goal-Driven Execution" in text
 
 
 def test_recording_handoff_entries_are_numbered() -> None:
