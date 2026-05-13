@@ -1,6 +1,6 @@
 # Project Operating Instructions
 
-This file is only a router. Keep it short so cloned agents load detailed rules from project-local skills.
+This file has two roles: (1) route agents to project-local skills for detailed rules, and (2) enforce coding behavior that must always apply regardless of which skill is loaded.
 
 ## Always Consider
 
