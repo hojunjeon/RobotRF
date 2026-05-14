@@ -1,0 +1,10 @@
+[
+  {
+    "checkpoint": "checkpoints/fetch_wsl_500k/FetchPickAndPlace_v4_sac.zip",
+    "env_id": "FetchPickAndPlace-v4",
+    "episodes": 100,
+    "mean_episode_length": 50.0,
+    "mean_reward": -31.08,
+    "success_rate": 0.49
+  }
+]

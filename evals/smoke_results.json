@@ -1,0 +1,10 @@
+[
+  {
+    "checkpoint": "checkpoints\\parallel_smoke\\FetchPickAndPlace_v4_sac.zip",
+    "env_id": "FetchPickAndPlace-v4",
+    "episodes": 1,
+    "mean_episode_length": 50.0,
+    "mean_reward": -50.0,
+    "success_rate": 0.0
+  }
+]

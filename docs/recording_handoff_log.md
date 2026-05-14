@@ -54,8 +54,6 @@
   - 기록 담당 에이전트의 실제 Notion 작성 플로우는 이 세션에서 실행하지 않았다.
 - 가정:
   - 프로젝트 최종 포트폴리오 톤은 사용자가 준 요구를 바탕으로 채용 포트폴리오형 + 기술 블로그형 + Notion 공개 페이지형으로 둔다.
----
-
 ## 002 - 2026-05-13 KST - Windows 실행 환경 부트스트랩 진단
 
 ### 오늘 한 일
@@ -905,4 +903,459 @@
 - 검증 완료: FetchPickAndPlace-v4 스냅샷 생성, 로봇팔 렌더 테스트, 전체 pytest 통과
 - 검증 불가: Franka/Panda는 asset과 환경이 없어 아직 검증 불가
 - 가정: 현재 단계에서는 Fetch 예제로 MuJoCo 로봇팔 렌더 가능 여부를 확인한다.
+---
+
+## 020 - 2026-05-14 KST - Windows/WSL venv 분리와 checkpoint rollout 검증
+
+### 오늘 한 일
+- Windows와 WSL 가상환경을 같은 `.venv`로 공유하지 않도록 공식 경로를 분리했다.
+- Windows 실행 경로는 `.venv-win`, WSL 실행 경로는 `.venv-wsl`로 정리했다.
+- `scripts/check_windows_bootstrap.ps1`가 `.venv-win`만 검사하도록 수정했다.
+- `.venv-win`을 새로 만들고 프로젝트 의존성을 설치했다.
+- 기존 Stage 1 smoke checkpoint로 rollout mp4 생성을 검증했다.
+
+### 막힌 문제
+- PowerShell에서 `"$venvName: FOUND"` 문자열이 변수명/드라이브 표기로 잘못 해석되어 스크립트 파싱 오류가 났다.
+- `imageio`만 설치된 상태에서는 mp4 저장 backend가 없어 `scripts/record_video.py`가 실패했다.
+- sandbox 내부에서는 `.venv-win\Scripts\python.exe` 실행이 제한되어 실제 검증 명령은 승인 후 실행했다.
+
+### 해결 방법 / 결정
+- PowerShell 문자열 보간을 `"${venvName}: FOUND"` 형태로 고쳤다.
+- `pyproject.toml`의 기본 의존성을 `imageio[ffmpeg]>=2.34`로 바꿔 mp4 저장 backend를 명시했다.
+- README와 초보자 로드맵의 Windows 명령은 `.venv-win`, WSL 명령은 `.venv-wsl` 기준으로 수정했다.
+- legacy `.venv`는 삭제하지 않고, 새 공식 실행 경로에서 제외했다.
+
+### 남은 문제
+- 생성된 rollout은 현재 Python MVP 환경의 2D/추상 gripper 영상이다. MuJoCo 3D 로봇팔 rollout은 별도 환경 통합이 필요하다.
+- WSL `.venv-wsl`은 이번 작업에서 새로 생성하거나 검증하지 않았다.
+
+### 증거
+- 코드 경로: `.gitignore`, `README.md`, `docs/project_roadmap.md`, `pyproject.toml`, `scripts/check_windows_bootstrap.ps1`, `tests/check_bootstrap_script.ps1`
+- 실행 명령: `& 'C:\Users\SSAFY\AppData\Local\Python\pythoncore-3.14-64\python.exe' -m venv .venv-win`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pip install -e .[dev]`
+- 실행 명령: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check_windows_bootstrap.ps1`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\check_runtime.py`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m ruff check .`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pip check`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\record_video.py --stage 1 --checkpoint checkpoints\smoke\stage1_sac.zip --output videos\stage1_smoke_rollout.mp4`
+- 결과 로그/지표: bootstrap `.venv-win python status: RUNNABLE`, Python 3.14.2
+- 결과 로그/지표: runtime check torch 2.12.0+cpu, cuda false, mujoco 3.8.1, render shape `(480, 480, 3)`
+- 결과 로그/지표: pytest `17 passed in 2.13s`, ruff `All checks passed!`, pip check `No broken requirements found.`
+- 스크린샷/영상: `videos/stage1_smoke_rollout.mp4`, 4,968 bytes
+- 체크포인트/학습 로그: `checkpoints/smoke/stage1_sac.zip`
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: Windows/WSL 환경 혼용 문제를 재현 가능한 실행 경로 분리로 해결했고, checkpoint를 실제 영상 산출물로 연결했다.
+- 기술 면접관: 문제를 코드 오류, 가상환경 경로 오류, mp4 backend 누락으로 분리해 각각 검증했다.
+- 개발자/학습자: `.venv-win`과 `.venv-wsl`을 분리하면 PowerShell/WSL 명령 혼동과 pyvenv 경로 오염을 줄일 수 있다.
+
+### 검증 상태
+- 검증 완료: Windows `.venv-win` 생성, 의존성 설치, runtime check, pytest, ruff, pip check, Stage 1 checkpoint rollout 영상 생성
+- 검증 불가: WSL `.venv-wsl` 생성과 WSL-native 테스트
+- 가정: 현재 rollout 영상은 성능 증거가 아니라 저장된 smoke checkpoint를 로드하고 실행/녹화할 수 있다는 실행 경로 증거다.
+---
+
+## 021 - 2026-05-14 KST - MuJoCo Fetch 학습/평가/3D rollout 경로 연결
+
+### 오늘 한 일
+- 기존 Stage 기반 MVP 환경은 유지하면서 Gymnasium-Robotics MuJoCo 환경을 선택할 수 있는 `--env-id` 경로를 추가했다.
+- `FetchPickAndPlace-v4`를 `scripts/train.py`, `scripts/evaluate.py`, `scripts/record_video.py`에서 직접 사용할 수 있게 연결했다.
+- MuJoCo Fetch 환경 생성과 stage/env-id 상호 배타 조건을 테스트로 추가했다.
+- 실제 smoke 학습, 평가, 3D rollout mp4 생성을 실행해 경로를 검증했다.
+
+### 막힌 문제
+- `make_env()`가 기존에는 `stage`만 받아 Gymnasium-Robotics env id를 전달할 방법이 없었다.
+- 기록 로그에 이전 항목을 중간 삽입하면서 순번 테스트가 실패했다.
+
+### 해결 방법 / 결정
+- `make_env(stage=None, env_id=None, render_mode=None)` 형태로 확장했다.
+- `stage`와 `env_id`를 동시에 넘기면 `ValueError`를 내도록 했다.
+- CLI에서는 `--stage`와 `--env-id`를 mutually exclusive group으로 묶었다.
+- MuJoCo smoke checkpoint 이름은 `FetchPickAndPlace_v4_sac.zip`처럼 env id 기반으로 저장했다.
+- 기록 로그 020 항목은 파일 끝으로 옮기고 허용된 섹션명으로 정리했다.
+
+### 남은 문제
+- 이번 smoke 학습은 `10` timesteps라 모델 품질이나 성공률 증거가 아니다.
+- Fetch 예제 환경을 연결한 것이며, 프로젝트 고유 분리수거 task를 MuJoCo asset으로 옮긴 것은 아직 아니다.
+- Franka/Panda 로봇팔 asset 통합은 별도 작업이다.
+
+### 증거
+- 코드 경로: `src/robot_sorting_rl/training.py`, `scripts/train.py`, `scripts/evaluate.py`, `scripts/record_video.py`, `tests/test_robotics_training_path.py`, `README.md`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest tests\test_robotics_training_path.py -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 10 --seed 42 --output-dir checkpoints\robotics_smoke --tensorboard-log runs\robotics_smoke`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\evaluate.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints\robotics_smoke\FetchPickAndPlace_v4_sac.zip --episodes 1`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\record_video.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints\robotics_smoke\FetchPickAndPlace_v4_sac.zip --output videos\fetch_pick_and_place_smoke_rollout.mp4 --max-steps 25`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m ruff check .`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pip check`
+- 결과 로그/지표: robotics training checkpoint `checkpoints\robotics_smoke\FetchPickAndPlace_v4_sac.zip`
+- 결과 로그/지표: evaluation `episodes=1`, `success_rate=0.0`, `mean_reward=-50.0`, `mean_episode_length=50.0`
+- 결과 로그/지표: pytest `19 passed in 2.57s`, ruff `All checks passed!`, pip check `No broken requirements found.`
+- 스크린샷/영상: `videos/fetch_pick_and_place_smoke_rollout.mp4`, 17,433 bytes
+- 체크포인트/학습 로그: `checkpoints/robotics_smoke/FetchPickAndPlace_v4_sac.zip`, 1,541,540 bytes; `runs/robotics_smoke/SAC_1`
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: Python MVP에서 끝나지 않고 실제 MuJoCo 로봇팔 예제 환경까지 학습/평가/영상 산출물 경로를 열었다.
+- 기술 면접관: 기존 Stage task와 외부 Gymnasium-Robotics env를 상호 배타 옵션으로 분리해 기존 계약을 깨지 않았다.
+- 개발자/학습자: `--env-id FetchPickAndPlace-v4` 하나로 같은 SAC+HER 파이프라인을 MuJoCo 로봇팔 환경에도 적용할 수 있게 됐다.
+
+### 검증 상태
+- 검증 완료: MuJoCo Fetch env 생성 테스트, smoke 학습, checkpoint 저장, 평가, 3D rollout mp4 생성, 전체 pytest, ruff, pip check
+- 검증 불가: 장기 학습 성공률, 프로젝트 고유 분리수거 task의 MuJoCo 3D 구현
+- 가정: 이번 결과는 실행 경로 검증이며 로봇팔이 task를 잘 수행한다는 성능 주장으로 쓰지 않는다.
+---
+
+## 022 - 2026-05-14 KST - WSL-native 학습 환경 준비
+
+### 오늘 한 일
+- 학습은 WSL/Linux에서, 영상 생성은 Windows에서 진행하는 운영 방식을 준비했다.
+- 기본 WSL 배포판 `Ubuntu-22.04`가 실행 가능하고 `/mnt/c/Users/SSAFY/Desktop/RRF` 저장소에 접근 가능한 것을 확인했다.
+- `/mnt/c` 내부 `.venv-wsl` 설치가 매우 느려 WSL-native venv `/home/ubuntu/.venvs/rrf`로 전환했다.
+- WSL-native venv에 프로젝트 의존성을 설치하고 MuJoCo/Gymnasium-Robotics 런타임을 검증했다.
+- 학습 직전 상태까지만 준비했고 실제 장기 학습은 시작하지 않았다.
+
+### 막힌 문제
+- `/mnt/c/Users/SSAFY/Desktop/RRF/.venv-wsl`은 `activate` 파일이 없는 불완전한 venv 상태였다.
+- `/mnt/c` 안의 `.venv-wsl`에 `pip install -e '.[dev]'`를 실행하자 15분 이상 걸리고 `mujoco`까지만 일부 설치되어 병목이 발생했다.
+
+### 해결 방법 / 결정
+- 느리게 남아 있던 `/mnt/c` venv pip 설치 프로세스를 종료했다.
+- 패키지 설치 위치는 WSL-native `/home/ubuntu/.venvs/rrf`로 바꿨다.
+- 소스는 Windows-visible 저장소 `/mnt/c/Users/SSAFY/Desktop/RRF`를 editable install로 연결했다.
+- 체크포인트와 TensorBoard 로그는 Windows에서도 바로 볼 수 있도록 `/mnt/c/.../checkpoints`, `/mnt/c/.../runs` 아래에 저장하는 명령을 사용할 예정이다.
+
+### 남은 문제
+- 실제 장기 학습은 아직 시작하지 않았다.
+- `/mnt/c` 내부 `.venv-wsl`은 불완전/부분 설치 상태라 공식 학습 경로로 쓰지 않는다.
+
+### 증거
+- 코드 경로: `/mnt/c/Users/SSAFY/Desktop/RRF`
+- 실행 명령: `wsl --list --all --verbose`
+- 실행 명령: `wsl -- bash -lc "pwd && uname -a && python3 --version && which python3"`
+- 실행 명령: `wsl -- bash -lc "mkdir -p ~/.venvs && python3 -m venv ~/.venvs/rrf && ~/.venvs/rrf/bin/python -m pip --version"`
+- 실행 명령: `wsl -- bash -lc "~/.venvs/rrf/bin/python -m pip install --upgrade pip && ~/.venvs/rrf/bin/python -m pip install -e '/mnt/c/Users/SSAFY/Desktop/RRF[dev]'"`
+- 실행 명령: `wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && ~/.venvs/rrf/bin/python scripts/check_runtime.py"`
+- 실행 명령: `wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && ~/.venvs/rrf/bin/python -m pytest tests/test_robotics_training_path.py tests/test_check_runtime_script.py -q"`
+- 실행 명령: `wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && ~/.venvs/rrf/bin/python -m pip check"`
+- 결과 로그/지표: WSL 기본 배포판 `Ubuntu-22.04`, WSL2, Linux kernel `6.6.114.1-microsoft-standard-WSL2`
+- 결과 로그/지표: Python `3.10.12`, venv pip `26.1.1`
+- 결과 로그/지표: torch `2.12.0+cu130`, cuda available `True`, GPU `NVIDIA GeForce RTX 5060 Ti`
+- 결과 로그/지표: mujoco `3.8.1`, Fetch render shape `(480, 480, 3)`
+- 결과 로그/지표: 관련 pytest `3 passed in 4.83s`, pip check `No broken requirements found.`
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: 아직 생성하지 않음
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 학습은 Linux/CUDA 환경으로, 영상 생성은 Windows 결과 확인 경로로 분리하는 실행 전략을 세웠다.
+- 기술 면접관: `/mnt/c` venv 병목을 관찰하고, 패키지 설치 위치를 WSL-native venv로 분리해 I/O 문제를 줄였다.
+- 개발자/학습자: WSL에서는 `/home/ubuntu/.venvs/rrf/bin/python`을 공식 학습 Python으로 쓰고, 산출물 경로만 `/mnt/c/...`로 둔다.
+
+### 검증 상태
+- 검증 완료: WSL runtime, CUDA, MuJoCo render, 관련 테스트, pip dependency check
+- 검증 불가: 실제 장기 학습 성공률과 최종 rollout 품질
+- 가정: 장기 학습은 시간이 오래 걸리므로 사용자가 명령을 실행하는 시점에 시작한다.
+---
+
+## 023 - 2026-05-14 KST - 새 PC 환경 구성 가이드 작성
+
+### 오늘 한 일
+- 다른 PC에서 현재 MuJoCo `FetchPickAndPlace-v4` 학습/평가/영상 생성 경로를 재현할 수 있도록 `docs/setup_new_machine.md`를 추가했다.
+- README의 Environment Policy 섹션에 새 가이드 링크를 추가했다.
+- Docker는 기본 경로가 아니라 Linux 학습 의존성 고정이 필요해졌을 때의 선택 사항으로 문서화했다.
+
+### 막힌 문제
+- 없음
+
+### 해결 방법 / 결정
+- Windows `.venv-win`은 평가/영상 생성/짧은 검증용으로 유지했다.
+- WSL `/home/ubuntu/.venvs/rrf`는 긴 학습용 기준 환경으로 유지했다.
+- 새 PC 가이드는 host GPU/WSL 확인, Windows venv, WSL venv, runtime check, smoke 학습, 긴 학습, 평가, 영상 생성, TensorBoard, 문제 해결 순서로 구성했다.
+
+### 남은 문제
+- 가이드 자체는 문서화 작업이며, 새 PC에서 실제 end-to-end 재검증은 아직 수행하지 않았다.
+- Docker 학습 이미지는 아직 만들지 않았다.
+
+### 증거
+- 코드 경로: `docs/setup_new_machine.md`, `README.md`
+- 실행 명령: 문서 변경만 수행하여 학습/평가 명령은 실행하지 않음
+- 결과 로그/지표: 해당 없음
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: 없음
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 프로젝트가 개인 PC에 묶이지 않도록 재현 가능한 설치 절차를 분리했다.
+- 기술 면접관: Docker보다 먼저 host GPU, WSL2, MuJoCo render, Windows 영상 생성 경로를 검증하는 순서가 더 실용적이라는 판단을 문서화했다.
+- 개발자/학습자: smoke 학습은 실행 경로 증거이고, sparse reward 환경의 성공률과 환경 구성 문제를 분리해서 봐야 한다.
+
+### 검증 상태
+- 검증 완료: 문서 파일 추가 및 README 링크 추가
+- 검증 불가: 새 PC에서 실제 설치, 500k 학습, 평가, 영상 생성
+- 가정: 기존 검증된 현재 PC의 WSL/Windows 분리 경로를 다른 PC에서도 같은 순서로 재현할 수 있다.
+---
+
+## 024 - 2026-05-14 KST - MuJoCo Fetch 병렬 학습 옵션 추가
+
+### 오늘 한 일
+- 기존 단일 환경 SAC+HER 학습을 baseline으로 유지하면서, `scripts/train.py`에 병렬 환경 학습 옵션을 추가했다.
+- `--n-envs`, `--batch-size`, `--buffer-size`, `--gradient-steps`, `--learning-starts`, `--n-sampled-goal`, `--log-interval-steps` CLI 옵션을 추가했다.
+- `n_envs > 1`이면 `SubprocVecEnv`로 여러 `FetchPickAndPlace-v4` 환경에서 하나의 SAC policy가 샘플을 수집하도록 했다.
+- 병렬 학습에서 `timesteps: current/total` 형식의 진행 로그를 출력하도록 callback을 추가했다.
+- HER가 첫 episode 종료 전 sampling하지 않도록 병렬 학습의 기본 `learning_starts`를 `10_000`으로 안전 보정했다.
+- README와 새 PC 환경 구성 가이드에 단일 baseline 명령과 병렬 학습 명령을 분리해 문서화했다.
+
+### 막힌 문제
+- 병렬 smoke에서 `learning_starts=1`, `learning_starts=60`을 사용하자 HER가 첫 episode 종료 전 sample을 시도해 `Unable to sample before the end of the first episode` 오류가 발생했다.
+
+### 해결 방법 / 결정
+- 병렬 환경에서는 전역 timestep이 env 수만큼 증가하므로, 첫 episode 완료 전에 HER replay buffer를 sample하지 않도록 `learning_starts`를 충분히 크게 잡아야 한다.
+- 사용자가 `--learning-starts`를 생략해도 `n_envs > 1`이면 기본값을 `10_000`으로 보정하도록 했다.
+- 단일 학습은 기존 SB3 기본 동작을 유지하기 위해 `n_envs=1`에서는 `learning_starts=None`을 그대로 둔다.
+
+### 남은 문제
+- 500k 병렬 학습의 실제 success rate, mean reward, wall-clock 개선 폭은 아직 측정하지 않았다.
+- `n_envs=4`, `batch_size=512`, `gradient_steps=-1` 조합은 추천 시작점이며 최적값은 실험으로 확인해야 한다.
+
+### 증거
+- 코드 경로: `src/robot_sorting_rl/training.py`, `scripts/train.py`, `tests/test_training_defaults.py`, `README.md`, `docs/setup_new_machine.md`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest tests\test_training_defaults.py -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 140 --seed 42 --output-dir checkpoints\parallel_smoke --tensorboard-log runs\parallel_smoke --n-envs 2 --batch-size 256 --gradient-steps 1 --learning-starts 110 --log-interval-steps 20`
+- 실행 명령: `wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && ~/.venvs/rrf/bin/python scripts/train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 140 --seed 42 --output-dir checkpoints/parallel_smoke_wsl --tensorboard-log runs/parallel_smoke_wsl --n-envs 2 --batch-size 256 --gradient-steps 1 --learning-starts 110 --log-interval-steps 20"`
+- 실행 명령: `wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && ~/.venvs/rrf/bin/python scripts/train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 20 --seed 42 --output-dir checkpoints/parallel_autostart_smoke_wsl --tensorboard-log runs/parallel_autostart_smoke_wsl --n-envs 2 --batch-size 256 --gradient-steps 1 --log-interval-steps 10"`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest tests\test_training_defaults.py tests\test_robotics_training_path.py tests\test_check_runtime_script.py -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m ruff check src\robot_sorting_rl\training.py scripts\train.py tests\test_training_defaults.py`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m ruff check .`
+- 결과 로그/지표: Windows 병렬 smoke `Using cpu device`, timestep 로그 `20/140`부터 `140/140`, checkpoint 저장 성공
+- 결과 로그/지표: WSL 병렬 smoke `Using cuda device`, timestep 로그 `20/140`부터 `140/140`, checkpoint 저장 성공
+- 결과 로그/지표: WSL auto learning_starts smoke `Using cuda device`, timestep 로그 `10/20`, `20/20`, checkpoint 저장 성공
+- 결과 로그/지표: 관련 테스트 `6 passed in 1.12s`, 전체 pytest `16 passed in 2.69s`, ruff `All checks passed!`
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: smoke 산출물 `checkpoints/parallel_smoke`, `checkpoints/parallel_smoke_wsl`, `checkpoints/parallel_autostart_smoke_wsl`, `runs/parallel_smoke`, `runs/parallel_smoke_wsl`, `runs/parallel_autostart_smoke_wsl`
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 단일 baseline을 유지하면서 병렬 실험 경로를 추가해 비교 가능한 실험 설계를 만들었다.
+- 기술 면접관: 병렬 env에서 HER replay buffer가 첫 episode 전 sampling하면 실패하는 원인을 smoke로 확인하고, `learning_starts` 보정으로 방지했다.
+- 개발자/학습자: Isaac Lab식 한 화면 다중 로봇과는 다르지만, 현재 MuJoCo/SB3 구조 안에서 하나의 policy가 여러 env 샘플을 모으는 병렬 학습 경로를 열었다.
+
+### 검증 상태
+- 검증 완료: CLI 옵션, 병렬 env smoke, WSL CUDA smoke, timestep 로그, safe learning_starts, 관련 테스트, 전체 pytest, 전체 ruff
+- 검증 불가: 장기 병렬 학습의 성공률 개선, 최적 `n_envs`/batch/gradient 조합
+- 가정: 실제 장기 학습은 사용자가 baseline과 병렬 명령을 각각 실행해 TensorBoard와 평가 지표로 비교한다.
+---
+
+## 025 - 2026-05-14 KST - 비전공자용 학습 로그 해석 가이드 추가
+
+### 오늘 한 일
+- Stable-Baselines3 학습 로그를 비전공자도 읽을 수 있도록 `docs/training_log_guide.md`를 추가했다.
+- README의 TensorBoard 섹션에서 학습 로그 해석 가이드로 연결했다.
+- 사용자가 공유한 현재 단일 학습 중간 로그를 예시로 사용해 `success_rate`, `ep_rew_mean`, `fps`, `total_timesteps`, `actor_loss`, `critic_loss`, `ent_coef` 등의 의미를 정리했다.
+
+### 막힌 문제
+- 없음
+
+### 해결 방법 / 결정
+- README 본문은 길게 늘리지 않고, 상세 설명은 별도 문서로 분리했다.
+- 성능을 과장하지 않기 위해 `success_rate=0.04`는 4% 성공률이며 아직 좋은 정책은 아니지만 성공 샘플이 생기기 시작한 상태라고 기록했다.
+- 학습 중 로그는 참고용이고 최종 판단은 `scripts/evaluate.py --episodes 100` 결과로 해야 한다고 명시했다.
+
+### 남은 문제
+- 현재 학습은 아직 완료되지 않았으므로 최종 평가 지표와 영상은 없다.
+
+### 증거
+- 코드 경로: `docs/training_log_guide.md`, `README.md`
+- 실행 명령: 문서 변경만 수행하여 학습/평가 명령은 실행하지 않음
+- 결과 로그/지표: 사용자가 공유한 중간 로그 `total_timesteps=155400`, `fps=33`, `episodes=3108`, `success_rate=0.04`, `ep_rew_mean=-48`
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: 현재 단일 학습 진행 중, checkpoint 최종 산출물은 아직 확인하지 않음
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 비전공자도 학습 진행 상태를 이해할 수 있도록 지표 해석 문서를 추가했다.
+- 기술 면접관: sparse reward 환경에서 중간 성공률이 낮게 보이는 이유와 최종 평가 분리 원칙을 설명했다.
+- 개발자/학습자: TensorBoard/SB3 로그의 내부 지표와 실제 성능 지표를 구분해서 읽도록 정리했다.
+
+### 검증 상태
+- 검증 완료: 문서 추가 및 README 링크 추가
+- 검증 불가: 현재 진행 중인 학습의 최종 success rate, mean reward, rollout 영상
+- 가정: 사용자가 공유한 로그는 현재 단일 `FetchPickAndPlace-v4` SAC+HER 학습 중간 로그다.
+---
+
+## 026 - 2026-05-14 KST - 평가 결과 JSON 누적 저장과 병렬 학습 준비사항 정리
+
+### 오늘 한 일
+- `scripts/evaluate.py`에 `--output` 옵션을 추가해 평가 결과를 하나의 JSON 배열 파일에 누적 저장하도록 했다.
+- 평가 결과 레코드에 `env_id`, `checkpoint`, `episodes`, `success_rate`, `mean_reward`, `mean_episode_length`를 함께 저장하도록 했다.
+- `docs/parallel_training_preparation.md`를 추가해 단일 baseline 완료 후 병렬 학습 시작 전 확인할 준비사항을 정리했다.
+- README, 새 PC 셋업 가이드, 학습 로그 가이드의 평가 명령을 `--output evals/fetch_results.json` 포함 형태로 갱신했다.
+
+### 막힌 문제
+- 없음
+
+### 해결 방법 / 결정
+- 평가 파일은 JSON Lines가 아니라 JSON 배열로 저장한다. 비전공자와 문서화/포트폴리오 사용자가 열어보기 쉽기 때문이다.
+- 파일이 없으면 새 배열을 만들고, 있으면 기존 배열을 읽어 새 결과를 append한다.
+- 병렬 학습은 단일 baseline의 평가 JSON과 rollout 영상을 확보한 뒤 시작하도록 문서화했다.
+
+### 남은 문제
+- 현재 진행 중인 단일 500k 학습 결과는 아직 평가하지 않았다.
+- 병렬 500k 학습의 실제 성능 개선 여부는 아직 측정하지 않았다.
+
+### 증거
+- 코드 경로: `scripts/evaluate.py`, `tests/test_evaluate_results.py`, `docs/parallel_training_preparation.md`, `README.md`, `docs/setup_new_machine.md`, `docs/training_log_guide.md`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest tests\test_evaluate_results.py -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\evaluate.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints\parallel_smoke\FetchPickAndPlace_v4_sac.zip --episodes 1 --output evals\smoke_results.json`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest tests\test_evaluate_results.py tests\test_training_defaults.py tests\test_robotics_training_path.py tests\test_check_runtime_script.py -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m ruff check scripts\evaluate.py tests\test_evaluate_results.py scripts\train.py src\robot_sorting_rl\training.py`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m ruff check .`
+- 결과 로그/지표: smoke evaluation `episodes=1`, `success_rate=0.0`, `mean_reward=-50.0`, `mean_episode_length=50.0`
+- 결과 로그/지표: `evals\smoke_results.json`에 JSON 배열 형태로 평가 결과 저장 확인
+- 결과 로그/지표: 관련 테스트 `8 passed in 0.93s`, 전체 pytest `18 passed in 2.28s`, ruff `All checks passed!`
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: 입력 checkpoint `checkpoints\parallel_smoke\FetchPickAndPlace_v4_sac.zip`
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 실험 결과가 터미널에 흩어지지 않고 하나의 JSON 파일에 누적되도록 재현성과 추적성을 높였다.
+- 기술 면접관: baseline과 병렬 실험을 같은 평가 파일에 누적해 비교 가능한 실험 설계를 만들었다.
+- 개발자/학습자: 학습이 끝난 뒤 평가 명령을 실행하면 metrics가 자동 저장되므로 수동 복사 실수를 줄인다.
+
+### 검증 상태
+- 검증 완료: 평가 JSON append 기능, smoke 평가 저장, 병렬 준비 문서, 관련 테스트, 전체 pytest, 전체 ruff
+- 검증 불가: 실제 단일 500k/병렬 500k 평가 결과
+- 가정: `evals/fetch_results.json`은 실험 비교용 누적 평가 파일로 사용한다.
+---
+
+## 027 - 2026-05-14 KST - 장기 학습 checkpoint interval 추가
+
+### 오늘 한 일
+- `scripts/train.py`에 `--checkpoint-interval` 옵션을 추가했다.
+- `train_sac()`가 Stable-Baselines3 `CheckpointCallback`을 사용해 지정 timestep 간격마다 checkpoint를 저장하도록 했다.
+- 기본 장기 학습 문서 명령을 `500000` timestep에서 `2000000` timestep으로 늘리고, `500000` timestep마다 checkpoint를 저장하도록 갱신했다.
+- README, 새 PC 셋업 가이드, 병렬 학습 준비 문서, 학습 로그 가이드의 학습/평가/영상 명령을 `fetch_wsl_2m`, `fetch_wsl_vec4_2m` 기준으로 갱신했다.
+
+### 막힌 문제
+- 없음
+
+### 해결 방법 / 결정
+- 최종 checkpoint `FetchPickAndPlace_v4_sac.zip`은 계속 저장한다.
+- 중간 checkpoint는 `FetchPickAndPlace_v4_sac_500000_steps.zip`처럼 timestep이 들어간 이름으로 저장한다.
+- sparse reward 환경에서 `500000` timestep만으로 성능이 부족할 수 있으므로, `2000000` timestep 학습을 기본 장기 실험으로 문서화했다.
+
+### 남은 문제
+- 실제 `2000000` timestep 학습과 각 500k checkpoint의 평가 결과는 아직 없다.
+- checkpoint별 자동 평가/영상 생성은 아직 구현하지 않았다.
+
+### 증거
+- 코드 경로: `src/robot_sorting_rl/training.py`, `scripts/train.py`, `tests/test_training_defaults.py`, `README.md`, `docs/setup_new_machine.md`, `docs/parallel_training_preparation.md`, `docs/training_log_guide.md`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest tests\test_training_defaults.py -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 20 --seed 42 --output-dir checkpoints\interval_smoke --tensorboard-log runs\interval_smoke --checkpoint-interval 10 --log-interval-steps 10`
+- 실행 명령: `Get-ChildItem -Path checkpoints\interval_smoke | Select-Object Name,Length`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest tests\test_training_defaults.py tests\test_evaluate_results.py -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m ruff check src\robot_sorting_rl\training.py scripts\train.py tests\test_training_defaults.py`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m ruff check .`
+- 결과 로그/지표: interval smoke checkpoint `FetchPickAndPlace_v4_sac_10_steps.zip`, `FetchPickAndPlace_v4_sac_20_steps.zip`, 최종 `FetchPickAndPlace_v4_sac.zip` 저장 확인
+- 결과 로그/지표: 관련 테스트 `6 passed in 0.05s`, 전체 pytest `18 passed in 2.21s`, ruff `All checks passed!`
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: `checkpoints\interval_smoke`, `runs\interval_smoke`
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 긴 RL 실험에서 중간 checkpoint를 남겨 실패 비용을 줄이고, 학습 진척별 비교 가능성을 확보했다.
+- 기술 면접관: sparse reward 환경에서 500k가 부족할 수 있다는 관찰을 실험 설계로 반영해 2M 장기 학습과 500k 간격 checkpoint 전략을 도입했다.
+- 개발자/학습자: checkpoint interval을 쓰면 최종 모델 하나만 남기는 대신 500k/1M/1.5M/2M 정책을 각각 평가할 수 있다.
+
+### 검증 상태
+- 검증 완료: checkpoint interval CLI/API, smoke checkpoint 저장, 관련 테스트, 전체 pytest, 전체 ruff
+- 검증 불가: 실제 2M 학습 완료, checkpoint별 success rate/영상 품질
+- 가정: 진행 중인 기존 500k baseline은 그대로 완료하고, 이후 새 2M 실험을 별도 output/log 경로에서 실행한다.
+---
+
+## 028 - 2026-05-14 KST - 병렬 학습 기본값 vec6 조정
+
+### 오늘 한 일
+- 현재 장비 사양 기준으로 병렬 학습 기본 명령을 `--n-envs 6`으로 조정했다.
+- 병렬 학습 산출물 경로를 `fetch_wsl_vec4_2m`에서 `fetch_wsl_vec6_2m`로 변경했다.
+- WSL 병렬 실행 명령에 `OMP_NUM_THREADS=1 MKL_NUM_THREADS=1`을 추가해 환경 프로세스별 CPU thread 과점 가능성을 줄였다.
+
+### 막힌 문제
+- 없음
+
+### 해결 방법 / 결정
+- 8코어/16스레드 CPU에서 장기 학습 안정성을 우선해 `n_envs=6`을 추천 시작점으로 문서화했다.
+- 실제 성능 개선은 학습 후 평가 JSON과 rollout 영상으로만 주장해야 한다.
+
+### 남은 문제
+- `vec6` 장기 학습의 wall-clock 속도, success rate, mean reward는 아직 측정하지 않았다.
+- 병렬 환경 6개를 한 화면에 동시에 녹화하는 기능은 현재 구현되어 있지 않다.
+
+### 증거
+- 코드 경로: `README.md`, `docs/setup_new_machine.md`, `docs/parallel_training_preparation.md`
+- 실행 명령: `rg -n "vec4|--n-envs 4|fetch_wsl_vec4_2m|vec6|--n-envs 6|fetch_wsl_vec6_2m" README.md docs\setup_new_machine.md docs\parallel_training_preparation.md`
+- 결과 로그/지표: 대상 문서에서 `fetch_wsl_vec6_2m`, `--n-envs 6`, `OMP_NUM_THREADS=1 MKL_NUM_THREADS=1` 반영 확인
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: 아직 생성 전
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 사용 장비에 맞춰 실험 파라미터를 보수적으로 조정하고 산출물 경로를 명확히 분리했다.
+- 기술 면접관: 병렬 환경 수는 성능 주장값이 아니라 처리량 실험 변수이며, 평가 지표로 검증해야 한다.
+- 개발자 학습용: `n_envs` 증가, CPU thread 제한, checkpoint/log 경로 분리의 이유를 남겼다.
+
+### 검증 상태
+- 검증 완료: 문서 문자열 반영 확인
+- 검증 불가: `vec6` 장기 학습 성능, 병렬 환경 동시 영상 녹화
+- 가정: 현재 장비에서는 `n_envs=6`이 `n_envs=8`보다 안정적인 첫 장기 실험값이다.
+---
+
+## 029 - 2026-05-14 KST - checkpoint 이어학습 옵션 추가
+
+### 오늘 한 일
+- `scripts/train.py`에 `--resume-from` 옵션을 추가했다.
+- `train_sac()`가 checkpoint를 받으면 `SAC.load(..., env=env)`로 기존 policy를 로드하고 `reset_num_timesteps=False`로 추가 학습하도록 했다.
+- 이어학습 시 진행 로그가 누적 timestep 기준으로 보이도록 `TimestepProgressCallback` 목표 timestep 계산을 수정했다.
+- README와 병렬 학습 준비 문서에 새 학습 명령과 이어학습 명령을 분리해 기록했다.
+
+### 막힌 문제
+- 첫 smoke 검증에서 이어학습 진행 로그가 `11/10`처럼 표시됐다.
+
+### 해결 방법 / 결정
+- 학습 시작 시점의 `num_timesteps`를 기준으로 목표 timestep을 `현재 누적 + 추가 학습량`으로 계산하도록 callback을 고쳤다.
+- 현재 구현은 policy checkpoint 가중치 이어학습이며, replay buffer 전체 복원은 포함하지 않는다고 문서화했다.
+
+### 남은 문제
+- replay buffer 저장/복원 기반의 완전 재개 기능은 아직 없다.
+- `vec6` 장기 학습 결과와 월요일 이어학습 성능은 아직 측정 전이다.
+
+### 증거
+- 코드 경로: `src/robot_sorting_rl/training.py`, `scripts/train.py`, `tests/test_training_defaults.py`, `README.md`, `docs/parallel_training_preparation.md`, `docs/setup_new_machine.md`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest tests\test_training_defaults.py -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 10 --seed 42 --output-dir checkpoints\resume_smoke_base --tensorboard-log runs\resume_smoke_base --log-interval-steps 10`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 10 --seed 42 --output-dir checkpoints\resume_smoke_continue2 --tensorboard-log runs\resume_smoke_continue2 --log-interval-steps 10 --resume-from checkpoints\resume_smoke_base\FetchPickAndPlace_v4_sac.zip`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m ruff check .`
+- 결과 로그/지표: RED 테스트에서 `resume_from` 시그니처와 `--resume-from` CLI 누락 확인
+- 결과 로그/지표: base smoke `timesteps: 10/10`, checkpoint 저장 성공
+- 결과 로그/지표: resume smoke `timesteps: 20/20`, checkpoint 저장 성공
+- 결과 로그/지표: 전체 pytest `18 passed in 2.22s`, ruff `All checks passed!`
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: `checkpoints\resume_smoke_base`, `checkpoints\resume_smoke_continue2`, `runs\resume_smoke_base`, `runs\resume_smoke_continue2`
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 주말 장기 학습 후 월요일 결과를 보고 같은 policy에서 추가 학습을 이어갈 수 있는 실험 운영 흐름을 만들었다.
+- 기술 면접관: 새 실험과 이어학습을 CLI 옵션으로 분리하고, off-policy SAC의 replay buffer 복원 범위를 과장하지 않았다.
+- 개발자 학습용: checkpoint 가중치 이어학습과 replay buffer 완전 재개의 차이를 문서에 남겼다.
+
+### 검증 상태
+- 검증 완료: `--resume-from` CLI/API 계약, checkpoint 로드 smoke, 누적 timestep 로그, 전체 pytest, 전체 ruff
+- 검증 불가: replay buffer 완전 복원, 주말 `vec6` 장기 학습 결과
+- 가정: 월요일 추가 학습은 `checkpoints/fetch_wsl_vec6_2m/FetchPickAndPlace_v4_sac.zip`를 `--resume-from`으로 지정해 시작한다.
 ---

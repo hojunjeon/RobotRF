@@ -19,7 +19,7 @@ $requiredSections = @(
     "Python",
     "WSL",
     "Project virtual environment",
-    ".venv python",
+    ".venv-win python",
     "Next action"
 )
 

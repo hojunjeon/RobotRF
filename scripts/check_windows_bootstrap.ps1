@@ -12,7 +12,8 @@ function Test-CommandExists {
 }
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$venvConfig = Join-Path $repoRoot ".venv\pyvenv.cfg"
+$venvName = ".venv-win"
+$venvConfig = Join-Path $repoRoot "$venvName\pyvenv.cfg"
 $hasProblem = $false
 
 Write-Output "Robot Sorting RL Windows Bootstrap Check"
@@ -26,13 +27,16 @@ if ($pythonCommand) {
     Write-Output "python: FOUND ($($pythonCommand.Source))"
 } else {
     Write-Output "python: MISSING"
-    $hasProblem = $true
 }
 
 if ($pyCommand) {
     Write-Output "py launcher: FOUND ($($pyCommand.Source))"
 } else {
     Write-Output "py launcher: MISSING"
+}
+
+if (-not $pythonCommand -and -not $pyCommand) {
+    $hasProblem = $true
 }
 
 Write-Section "WSL"
@@ -46,7 +50,7 @@ if (Test-CommandExists "wsl") {
     } else {
         Write-Output "wsl distributions: unavailable"
         $wslListOutput | ForEach-Object { Write-Output "  $_" }
-        $hasProblem = $true
+        Write-Output "wsl status: optional for Windows smoke tests"
     }
 } else {
     Write-Output "wsl.exe: MISSING"
@@ -55,53 +59,53 @@ if (Test-CommandExists "wsl") {
 
 Write-Section "Project virtual environment"
 if (Test-Path -LiteralPath $venvConfig) {
-    Write-Output ".venv: FOUND"
+    Write-Output "${venvName}: FOUND"
     $homeLine = Select-String -LiteralPath $venvConfig -Pattern "^home = " -ErrorAction SilentlyContinue
     if ($homeLine) {
         $homePath = $homeLine.Line -replace "^home = ", ""
-        Write-Output ".venv home: $homePath"
+        Write-Output "$venvName home: $homePath"
         if (-not (Test-Path -LiteralPath $homePath)) {
-            Write-Output ".venv home status: MISSING"
+            Write-Output "$venvName home status: MISSING"
             $hasProblem = $true
         } else {
-            Write-Output ".venv home status: FOUND"
+            Write-Output "$venvName home status: FOUND"
         }
     }
 } else {
-    Write-Output ".venv: MISSING"
+    Write-Output "${venvName}: MISSING"
     $hasProblem = $true
 }
 
-Write-Section ".venv python"
-$venvPython = Join-Path $repoRoot ".venv\Scripts\python.exe"
+Write-Section "$venvName python"
+$venvPython = Join-Path $repoRoot "$venvName\Scripts\python.exe"
 if (Test-Path -LiteralPath $venvPython) {
-    Write-Output ".venv python path: $venvPython"
+    Write-Output "$venvName python path: $venvPython"
     $previousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
     $venvPythonVersion = & $venvPython --version 2>&1
     $venvPythonExitCode = $LASTEXITCODE
     $ErrorActionPreference = $previousErrorActionPreference
     if ($venvPythonExitCode -eq 0) {
-        Write-Output ".venv python status: RUNNABLE"
-        $venvPythonVersion | ForEach-Object { Write-Output ".venv python version: $_" }
+        Write-Output "$venvName python status: RUNNABLE"
+        $venvPythonVersion | ForEach-Object { Write-Output "$venvName python version: $_" }
     } else {
-        Write-Output ".venv python status: BROKEN"
+        Write-Output "$venvName python status: BROKEN"
         $venvPythonVersion | ForEach-Object { Write-Output "  $_" }
         $hasProblem = $true
     }
 } else {
-    Write-Output ".venv python path: MISSING"
+    Write-Output "$venvName python path: MISSING"
     $hasProblem = $true
 }
 
 Write-Section "Next action"
 if ($hasProblem) {
-    Write-Output "Repair the Windows .venv first, then rerun this script."
-    Write-Output "Expected command after repair: .\.venv\Scripts\python.exe -m pytest"
+    Write-Output "Repair the Windows $venvName first, then rerun this script."
+    Write-Output "Expected command after repair: .\$venvName\Scripts\python.exe -m pytest"
     exit 1
 }
 
 Write-Output "Environment bootstrap looks ready."
-Write-Output "Run: .\.venv\Scripts\python.exe -m pytest"
-Write-Output "Run: .\.venv\Scripts\python.exe scripts\check_runtime.py"
+Write-Output "Run: .\$venvName\Scripts\python.exe -m pytest"
+Write-Output "Run: .\$venvName\Scripts\python.exe scripts\check_runtime.py"
 exit 0

@@ -10,7 +10,7 @@ from robot_sorting_rl.training import make_env
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Record rollout video for a checkpoint.")
-    parser.add_argument("--stage", type=int, choices=[1, 2], required=True)
+    parser.add_argument("--env-id", default="FetchPickAndPlace-v4")
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("videos/rollout.mp4"))
     parser.add_argument("--max-steps", type=int, default=50)
@@ -21,7 +21,7 @@ def main() -> None:
     from stable_baselines3 import SAC
 
     args = parse_args()
-    env = make_env(stage=args.stage, render_mode="rgb_array")
+    env = make_env(env_id=args.env_id, render_mode="rgb_array")
     model = SAC.load(args.checkpoint, env=env)
     obs, _ = env.reset(seed=42)
     frames = [env.render()]
