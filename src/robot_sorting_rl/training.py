@@ -4,13 +4,15 @@ from pathlib import Path
 from typing import Any
 
 from robot_sorting_rl.algorithms import create_model_config
+from robot_sorting_rl.envs import SIDE_BIN_ENV_ID, register_custom_envs
 
 
-def make_env(env_id: str = "FetchPickAndPlace-v4", render_mode: str | None = None):
+def make_env(env_id: str = SIDE_BIN_ENV_ID, render_mode: str | None = None):
     import gymnasium as gym
     import gymnasium_robotics
 
     gym.register_envs(gymnasium_robotics)
+    register_custom_envs()
     return gym.make(env_id, render_mode=render_mode)
 
 
@@ -44,6 +46,12 @@ def resolve_learning_starts(learning_starts: int | None, n_envs: int) -> int | N
     return 10_000
 
 
+def resolve_next_checkpoint_timestep(current_timesteps: int, checkpoint_interval: int) -> int:
+    if checkpoint_interval < 1:
+        raise ValueError("checkpoint_interval must be at least 1")
+    return ((current_timesteps // checkpoint_interval) + 1) * checkpoint_interval
+
+
 class TimestepProgressCallback:
     def __init__(self, total_timesteps: int, log_interval_steps: int):
         from stable_baselines3.common.callbacks import BaseCallback
@@ -74,6 +82,37 @@ class TimestepProgressCallback:
                 return True
 
         self.callback = _Callback(total_timesteps, log_interval_steps)
+
+
+class TimestepCheckpointCallback:
+    def __init__(self, checkpoint_interval: int, save_path: Path, name_prefix: str):
+        from stable_baselines3.common.callbacks import BaseCallback
+
+        class _Callback(BaseCallback):
+            def __init__(self, checkpoint_interval: int, save_path: Path, name_prefix: str):
+                super().__init__()
+                self.checkpoint_interval = checkpoint_interval
+                self.save_path = save_path
+                self.name_prefix = name_prefix
+                self.next_checkpoint_timestep = checkpoint_interval
+
+            def _on_training_start(self) -> None:
+                self.next_checkpoint_timestep = resolve_next_checkpoint_timestep(
+                    current_timesteps=self.num_timesteps,
+                    checkpoint_interval=self.checkpoint_interval,
+                )
+
+            def _on_step(self) -> bool:
+                while self.num_timesteps >= self.next_checkpoint_timestep:
+                    checkpoint = (
+                        self.save_path
+                        / f"{self.name_prefix}_{self.next_checkpoint_timestep}_steps.zip"
+                    )
+                    self.model.save(checkpoint)
+                    self.next_checkpoint_timestep += self.checkpoint_interval
+                return True
+
+        self.callback = _Callback(checkpoint_interval, save_path, name_prefix)
 
 
 def train_sac(
@@ -134,15 +173,13 @@ def train_sac(
         )
     output_dir.mkdir(parents=True, exist_ok=True)
     if checkpoint_interval is not None:
-        from stable_baselines3.common.callbacks import CheckpointCallback
-
         checkpoint_prefix = f"{env_id.replace('-', '_')}_sac"
         callbacks.append(
-            CheckpointCallback(
-                save_freq=checkpoint_interval,
-                save_path=str(output_dir),
+            TimestepCheckpointCallback(
+                checkpoint_interval=checkpoint_interval,
+                save_path=output_dir,
                 name_prefix=checkpoint_prefix,
-            )
+            ).callback
         )
     callback = CallbackList(callbacks) if callbacks else None
     model.learn(

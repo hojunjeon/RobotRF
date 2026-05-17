@@ -159,13 +159,13 @@ checkpoints\fetch_smoke\FetchPickAndPlace_v4_sac.zip
 Smoke 경로가 통과한 뒤 WSL에서 긴 학습을 시작한다.
 
 ```powershell
-wsl -- bash -lc "cd /mnt/c/Users/<USER>/Desktop/RRF && ~/.venvs/rrf/bin/python scripts/train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 2000000 --seed 42 --output-dir checkpoints/fetch_wsl_2m --tensorboard-log runs/fetch_wsl_2m --checkpoint-interval 500000 --log-interval-steps 10000"
+wsl -- bash -lc "cd /mnt/c/Users/<USER>/Desktop/RRF && ~/.venvs/rrf/bin/python scripts/train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 2000000 --seed 42 --output-dir checkpoints/fetch_wsl_2m --tensorboard-log runs/fetch_wsl_2m --checkpoint-interval 250000 --log-interval-steps 10000"
 ```
 
 위 명령은 단일 환경 baseline이다. PC 자원을 더 적극적으로 쓰는 병렬 환경 학습은 별도 output/log 경로로 실행한다.
 
 ```powershell
-wsl -- bash -lc "cd /mnt/c/Users/<USER>/Desktop/RRF && OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ~/.venvs/rrf/bin/python scripts/train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 2000000 --seed 42 --output-dir checkpoints/fetch_wsl_vec6_2m --tensorboard-log runs/fetch_wsl_vec6_2m --n-envs 6 --batch-size 512 --buffer-size 1000000 --gradient-steps -1 --learning-starts 10000 --n-sampled-goal 4 --log-interval-steps 10000 --checkpoint-interval 500000"
+wsl -- bash -lc "cd /mnt/c/Users/<USER>/Desktop/RRF && OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ~/.venvs/rrf/bin/python scripts/train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 2000000 --seed 42 --output-dir checkpoints/fetch_wsl_vec6_2m --tensorboard-log runs/fetch_wsl_vec6_2m --n-envs 6 --batch-size 512 --buffer-size 1000000 --gradient-steps -1 --learning-starts 10000 --n-sampled-goal 4 --log-interval-steps 10000 --checkpoint-interval 250000"
 ```
 
 기록할 값:
@@ -175,7 +175,7 @@ wsl -- bash -lc "cd /mnt/c/Users/<USER>/Desktop/RRF && OMP_NUM_THREADS=1 MKL_NUM
 - seed: `42`
 - total timesteps: `2000000`
 - checkpoint path: `checkpoints/fetch_wsl_2m/FetchPickAndPlace_v4_sac.zip`
-- interval checkpoints: `checkpoints/fetch_wsl_2m/FetchPickAndPlace_v4_sac_500000_steps.zip`, `..._1000000_steps.zip`, `..._1500000_steps.zip`, `..._2000000_steps.zip`
+- interval checkpoints: `checkpoints/fetch_wsl_2m/FetchPickAndPlace_v4_sac_250000_steps.zip`, `..._500000_steps.zip`, `..._750000_steps.zip`, `..._1000000_steps.zip`
 - TensorBoard path: `runs/fetch_wsl_2m`
 - parallel checkpoint path: `checkpoints/fetch_wsl_vec6_2m/FetchPickAndPlace_v4_sac.zip`
 - parallel TensorBoard path: `runs/fetch_wsl_vec6_2m`
@@ -183,7 +183,7 @@ wsl -- bash -lc "cd /mnt/c/Users/<USER>/Desktop/RRF && OMP_NUM_THREADS=1 MKL_NUM
 
 주의:
 
-- `500000` timestep은 로봇 sparse reward 환경에서 충분하지 않을 수 있으므로, 기본 장기 학습은 `2000000` timestep으로 잡고 `500000`마다 checkpoint를 저장한다.
+- `250000` timestep마다 checkpoint를 저장해 성장 과정을 더 촘촘하게 남기고, 기본 장기 학습은 `2000000` timestep으로 잡는다.
 - 초기 성공률은 오래 `0.0`일 수 있다.
 - smoke 학습 성공은 실행 경로 증거이지 정책 성능 증거가 아니다.
 - 병렬 학습은 한 policy가 여러 환경에서 샘플을 모으는 방식이며, timestep 진행 로그를 `timesteps: 10000/500000` 형식으로 출력한다.
@@ -210,7 +210,7 @@ wsl -- bash -lc "cd /mnt/c/Users/<USER>/Desktop/RRF && ~/.venvs/rrf/bin/python s
 MP4 rollout은 Windows에서 생성한다.
 
 ```powershell
-.\.venv-win\Scripts\python.exe scripts\record_video.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints\fetch_wsl_2m\FetchPickAndPlace_v4_sac.zip --output videos\fetch_wsl_2m_rollout.mp4 --max-steps 50
+.\.venv-win\Scripts\python.exe scripts\record_video.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints\fetch_wsl_2m\FetchPickAndPlace_v4_sac.zip --output videos\fetch_wsl_2m_rollout.mp4 --max-steps 50 --start-delay-seconds 1 --end-delay-seconds 1 --fps 25
 ```
 
 출력 파일:

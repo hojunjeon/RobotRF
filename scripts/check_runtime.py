@@ -7,8 +7,11 @@ def main() -> None:
     import mujoco
     import torch
 
+    from robot_sorting_rl.envs import SIDE_BIN_ENV_ID, register_custom_envs
+
     gym.register_envs(gymnasium_robotics)
-    env = gym.make("FetchPickAndPlace-v4", render_mode="rgb_array")
+    register_custom_envs()
+    env = gym.make(SIDE_BIN_ENV_ID, render_mode="rgb_array")
     obs, info = env.reset(seed=42)
     frame = env.render()
     env.close()
@@ -16,8 +19,9 @@ def main() -> None:
     print(f"torch: {torch.__version__}")
     print(f"cuda_available: {torch.cuda.is_available()}")
     print(f"mujoco: {mujoco.__version__}")
-    print(f"fetch_observation_keys: {sorted(obs.keys())}")
-    print(f"fetch_info_keys: {sorted(info.keys())}")
+    print(f"env_id: {SIDE_BIN_ENV_ID}")
+    print(f"observation_keys: {sorted(obs.keys())}")
+    print(f"info_keys: {sorted(info.keys())}")
     print(f"render_shape: {frame.shape}")
 
 

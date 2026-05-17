@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FetchSideBinPlace-v0 3D Layout Preview</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #5f6b7a;
+      --line: #d6dde8;
+      --blue: #275dd8;
+      --red: #c93b3b;
+      --green: #21805b;
+      --table: #c8ccd3;
+      --object: #22262d;
+      --robot: #6f7785;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family:
+        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 16px;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .viewport,
+    .side {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 10px 28px rgb(28 39 54 / 0.08);
+    }
+
+    .viewport {
+      position: relative;
+      overflow: hidden;
+      min-height: 620px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    .hud {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      display: grid;
+      gap: 4px;
+      padding: 10px 12px;
+      background: rgb(255 255 255 / 0.88);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      backdrop-filter: blur(8px);
+    }
+
+    .hud h1 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .hud p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .side {
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .side h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    .section {
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .section:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      gap: 8px;
+      align-items: start;
+      margin: 8px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .swatch {
+      width: 12px;
+      height: 12px;
+      margin-top: 3px;
+      border: 1px solid rgb(0 0 0 / 0.18);
+      border-radius: 3px;
+    }
+
+    .coords {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .coords th,
+    .coords td {
+      padding: 7px 6px;
+      border-top: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .coords th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    code {
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    button {
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafd;
+      color: var(--ink);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #eef3fb;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .viewport {
+        min-height: 520px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="viewport">
+      <canvas id="scene" aria-label="FetchSideBinPlace-v0 3D layout"></canvas>
+      <div class="hud">
+        <h1>FetchSideBinPlace-v0</h1>
+        <p>드래그로 회전, 휠로 확대/축소</p>
+      </div>
+    </section>
+
+    <aside class="side">
+      <h2>환경 구성</h2>
+      <div class="section">
+        <div class="row">
+          <span class="swatch" style="background: var(--table)"></span>
+          <span>테이블: Fetch 기본 테이블 위에서 작업이 시작된다.</span>
+        </div>
+        <div class="row">
+          <span class="swatch" style="background: var(--object)"></span>
+          <span>물체 시작점: 로봇 정면 <code>[1.30, 0.70]</code> 근처에 작은 노이즈를 준다.</span>
+        </div>
+        <div class="row">
+          <span class="swatch" style="background: var(--blue)"></span>
+          <span>오른쪽 물리 bin: y+ 방향에 바닥과 네 벽을 둔다.</span>
+        </div>
+        <div class="row">
+          <span class="swatch" style="background: rgb(33 128 91 / 0.22)"></span>
+          <span>성공 영역: 물체 중심이 이 내부에 연속 5 step 머무르면 성공이다.</span>
+        </div>
+        <div class="row">
+          <span class="swatch" style="background: var(--red)"></span>
+          <span>목표점: HER의 desired_goal은 bin 중심으로 고정된다.</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>주요 좌표</h2>
+        <table class="coords">
+          <tr><th>항목</th><th>값</th></tr>
+          <tr><td>env id</td><td><code>FetchSideBinPlace-v0</code></td></tr>
+          <tr><td>물체 시작</td><td><code>x=1.30, y=0.70, noise=0.015</code></td></tr>
+          <tr><td>bin 중심</td><td><code>[1.30, 1.00, 0.435]</code></td></tr>
+          <tr><td>bin 내부 min</td><td><code>[1.215, 0.915, 0.425]</code></td></tr>
+          <tr><td>bin 내부 max</td><td><code>[1.385, 1.085, 0.515]</code></td></tr>
+          <tr><td>유지 조건</td><td><code>success_hold_steps = 5</code></td></tr>
+        </table>
+      </div>
+
+      <div class="section">
+        <h2>시점</h2>
+        <div class="controls">
+          <button type="button" data-view="front">정면</button>
+          <button type="button" data-view="top">상단</button>
+          <button type="button" data-view="iso">입체</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+
+    const state = {
+      yaw: -0.72,
+      pitch: -0.52,
+      zoom: 760,
+      dragging: false,
+      lastX: 0,
+      lastY: 0,
+    };
+
+    const objects = [
+      box("table", [1.3, 0.75, 0.2], [0.25, 0.35, 0.2], "#c8ccd3", 0.9),
+      box("robot-base", [0.405, 0.48, 0.08], [0.12, 0.13, 0.08], "#6f7785", 0.75),
+      box("gripper-area", [1.3, 0.75, 0.57], [0.04, 0.04, 0.035], "#6f7785", 0.85),
+      box("object-start", [1.3, 0.7, 0.425], [0.025, 0.025, 0.025], "#22262d", 1),
+      box("bin-floor", [1.3, 1.0, 0.405], [0.1, 0.1, 0.005], "#275dd8", 0.9),
+      box("bin-left-wall", [1.2075, 1.0, 0.45], [0.0075, 0.1, 0.04], "#275dd8", 0.8),
+      box("bin-right-wall", [1.3925, 1.0, 0.45], [0.0075, 0.1, 0.04], "#275dd8", 0.8),
+      box("bin-front-wall", [1.3, 0.9075, 0.45], [0.1, 0.0075, 0.04], "#275dd8", 0.8),
+      box("bin-back-wall", [1.3, 1.0925, 0.45], [0.1, 0.0075, 0.04], "#275dd8", 0.8),
+      box("success-zone", [1.3, 1.0, 0.47], [0.085, 0.085, 0.045], "#21805b", 0.18),
+      sphere("target", [1.3, 1.0, 0.435], 0.018, "#c93b3b"),
+    ];
+
+    const labels = [
+      { text: "로봇 정면 물체 시작", pos: [1.3, 0.7, 0.5], color: "#22262d" },
+      { text: "오른쪽 물리 bin", pos: [1.3, 1.12, 0.56], color: "#275dd8" },
+      { text: "성공 영역", pos: [1.39, 1.0, 0.55], color: "#21805b" },
+      { text: "Fetch base", pos: [0.405, 0.48, 0.22], color: "#6f7785" },
+    ];
+
+    function box(name, center, half, color, alpha) {
+      return { type: "box", name, center, half, color, alpha };
+    }
+
+    function sphere(name, center, radius, color) {
+      return { type: "sphere", name, center, radius, color, alpha: 1 };
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      draw();
+    }
+
+    function rotate(point) {
+      const [x0, y0, z0] = point;
+      const x = x0 - 1.08;
+      const y = y0 - 0.78;
+      const z = z0 - 0.32;
+      const cy = Math.cos(state.yaw);
+      const sy = Math.sin(state.yaw);
+      const cp = Math.cos(state.pitch);
+      const sp = Math.sin(state.pitch);
+      const rx = x * cy - y * sy;
+      const ry = x * sy + y * cy;
+      const rz = z;
+      return [rx, ry * cp - rz * sp, ry * sp + rz * cp];
+    }
+
+    function project(point) {
+      const [x, y, z] = rotate(point);
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+      const perspective = 1 / (1 + z * 0.22);
+      return {
+        x: w * 0.5 + x * state.zoom * perspective,
+        y: h * 0.56 - y * state.zoom * perspective,
+        depth: z,
+      };
+    }
+
+    function corners(obj) {
+      const [cx, cy, cz] = obj.center;
+      const [hx, hy, hz] = obj.half;
+      return [
+        [cx - hx, cy - hy, cz - hz],
+        [cx + hx, cy - hy, cz - hz],
+        [cx + hx, cy + hy, cz - hz],
+        [cx - hx, cy + hy, cz - hz],
+        [cx - hx, cy - hy, cz + hz],
+        [cx + hx, cy - hy, cz + hz],
+        [cx + hx, cy + hy, cz + hz],
+        [cx - hx, cy + hy, cz + hz],
+      ];
+    }
+
+    function shade(hex, amount) {
+      const n = Number.parseInt(hex.slice(1), 16);
+      const r = Math.max(0, Math.min(255, (n >> 16) + amount));
+      const g = Math.max(0, Math.min(255, ((n >> 8) & 255) + amount));
+      const b = Math.max(0, Math.min(255, (n & 255) + amount));
+      return `rgb(${r} ${g} ${b})`;
+    }
+
+    function drawBox(obj) {
+      const c = corners(obj).map(project);
+      const faces = [
+        [0, 1, 2, 3, -18],
+        [4, 5, 6, 7, 18],
+        [0, 1, 5, 4, 5],
+        [1, 2, 6, 5, -5],
+        [2, 3, 7, 6, 10],
+        [3, 0, 4, 7, -10],
+      ].map(face => ({
+        points: face.slice(0, 4),
+        tone: face[4],
+        depth: face.slice(0, 4).reduce((sum, idx) => sum + c[idx].depth, 0) / 4,
+      })).sort((a, b) => a.depth - b.depth);
+
+      ctx.save();
+      ctx.globalAlpha = obj.alpha;
+      for (const face of faces) {
+        ctx.beginPath();
+        const first = c[face.points[0]];
+        ctx.moveTo(first.x, first.y);
+        for (const idx of face.points.slice(1)) {
+          ctx.lineTo(c[idx].x, c[idx].y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = shade(obj.color, face.tone);
+        ctx.fill();
+        ctx.globalAlpha = Math.min(1, obj.alpha + 0.12);
+        ctx.strokeStyle = "rgb(23 32 42 / 0.34)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.globalAlpha = obj.alpha;
+      }
+      ctx.restore();
+    }
+
+    function drawSphere(obj) {
+      const p = project(obj.center);
+      const radius = Math.max(5, obj.radius * state.zoom);
+      ctx.save();
+      ctx.fillStyle = obj.color;
+      ctx.strokeStyle = "rgb(23 32 42 / 0.25)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      ctx.save();
+      ctx.strokeStyle = "rgb(95 107 122 / 0.18)";
+      ctx.lineWidth = 1;
+      for (let x = 0.4; x <= 1.6; x += 0.1) {
+        drawLine([x, 0.35, 0], [x, 1.2, 0]);
+      }
+      for (let y = 0.35; y <= 1.2; y += 0.1) {
+        drawLine([0.4, y, 0], [1.6, y, 0]);
+      }
+      ctx.restore();
+    }
+
+    function drawLine(a, b) {
+      const pa = project(a);
+      const pb = project(b);
+      ctx.beginPath();
+      ctx.moveTo(pa.x, pa.y);
+      ctx.lineTo(pb.x, pb.y);
+      ctx.stroke();
+    }
+
+    function drawLabels() {
+      ctx.save();
+      ctx.font = "12px Inter, system-ui, sans-serif";
+      ctx.textBaseline = "middle";
+      for (const label of labels) {
+        const p = project(label.pos);
+        ctx.fillStyle = "rgb(255 255 255 / 0.86)";
+        const metrics = ctx.measureText(label.text);
+        ctx.fillRect(p.x + 8, p.y - 11, metrics.width + 12, 22);
+        ctx.strokeStyle = "rgb(214 221 232)";
+        ctx.strokeRect(p.x + 8, p.y - 11, metrics.width + 12, 22);
+        ctx.fillStyle = label.color;
+        ctx.fillText(label.text, p.x + 14, p.y);
+      }
+      ctx.restore();
+    }
+
+    function drawAxes() {
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#c93b3b";
+      drawLine([0.5, 0.42, 0.02], [0.7, 0.42, 0.02]);
+      ctx.strokeStyle = "#21805b";
+      drawLine([0.5, 0.42, 0.02], [0.5, 0.62, 0.02]);
+      ctx.strokeStyle = "#275dd8";
+      drawLine([0.5, 0.42, 0.02], [0.5, 0.42, 0.22]);
+      ctx.restore();
+      drawAxisLabel("x", [0.72, 0.42, 0.02], "#c93b3b");
+      drawAxisLabel("y+", [0.5, 0.64, 0.02], "#21805b");
+      drawAxisLabel("z", [0.5, 0.42, 0.24], "#275dd8");
+    }
+
+    function drawAxisLabel(text, pos, color) {
+      const p = project(pos);
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.font = "12px Inter, system-ui, sans-serif";
+      ctx.fillText(text, p.x, p.y);
+      ctx.restore();
+    }
+
+    function draw() {
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#f5f7fb";
+      ctx.fillRect(0, 0, w, h);
+      drawGrid();
+      drawAxes();
+      const sorted = [...objects].sort((a, b) => {
+        const da = rotate(a.center)[2];
+        const db = rotate(b.center)[2];
+        return da - db;
+      });
+      for (const obj of sorted) {
+        if (obj.type === "box") drawBox(obj);
+        if (obj.type === "sphere") drawSphere(obj);
+      }
+      drawLabels();
+    }
+
+    canvas.addEventListener("pointerdown", event => {
+      state.dragging = true;
+      state.lastX = event.clientX;
+      state.lastY = event.clientY;
+      canvas.setPointerCapture(event.pointerId);
+    });
+
+    canvas.addEventListener("pointermove", event => {
+      if (!state.dragging) return;
+      const dx = event.clientX - state.lastX;
+      const dy = event.clientY - state.lastY;
+      state.lastX = event.clientX;
+      state.lastY = event.clientY;
+      state.yaw += dx * 0.008;
+      state.pitch = Math.max(-1.25, Math.min(0.05, state.pitch + dy * 0.006));
+      draw();
+    });
+
+    canvas.addEventListener("pointerup", event => {
+      state.dragging = false;
+      canvas.releasePointerCapture(event.pointerId);
+    });
+
+    canvas.addEventListener("wheel", event => {
+      event.preventDefault();
+      state.zoom = Math.max(360, Math.min(1200, state.zoom - event.deltaY * 0.6));
+      draw();
+    }, { passive: false });
+
+    document.querySelectorAll("button[data-view]").forEach(button => {
+      button.addEventListener("click", () => {
+        const view = button.dataset.view;
+        if (view === "front") {
+          state.yaw = -Math.PI / 2;
+          state.pitch = -0.32;
+        }
+        if (view === "top") {
+          state.yaw = -Math.PI / 2;
+          state.pitch = -1.18;
+        }
+        if (view === "iso") {
+          state.yaw = -0.72;
+          state.pitch = -0.52;
+        }
+        draw();
+      });
+    });
+
+    window.addEventListener("resize", resize);
+    resize();
+  </script>
+</body>
+</html>

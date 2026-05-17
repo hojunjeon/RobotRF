@@ -16,3 +16,7 @@ wandb/
 
 .*cache/
 .env
+
+hackathon*
+.vscode/
+plans/

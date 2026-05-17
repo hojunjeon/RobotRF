@@ -5,12 +5,13 @@ import json
 from pathlib import Path
 from typing import Any
 
+from robot_sorting_rl.envs import SIDE_BIN_ENV_ID
 from robot_sorting_rl.training import evaluate_model
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate robot sorting RL checkpoint.")
-    parser.add_argument("--env-id", default="FetchPickAndPlace-v4")
+    parser.add_argument("--env-id", default=SIDE_BIN_ENV_ID)
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--episodes", type=int, default=100)
     parser.add_argument("--output", type=Path, default=None)

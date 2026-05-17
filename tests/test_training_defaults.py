@@ -1,7 +1,11 @@
 import inspect
 from pathlib import Path
 
-from robot_sorting_rl.training import resolve_learning_starts, train_sac
+from robot_sorting_rl.training import (
+    resolve_learning_starts,
+    resolve_next_checkpoint_timestep,
+    train_sac,
+)
 
 
 def test_train_sac_disables_progress_bar_by_default() -> None:
@@ -27,6 +31,7 @@ def test_train_sac_keeps_single_env_as_default_and_exposes_parallel_controls() -
 def test_train_script_exposes_parallel_training_cli_flags() -> None:
     script = Path("scripts/train.py").read_text(encoding="utf-8")
 
+    assert "FetchSideBinPlace-v0" in script
     assert "--n-envs" in script
     assert "--batch-size" in script
     assert "--buffer-size" in script
@@ -42,3 +47,24 @@ def test_parallel_training_uses_safe_learning_starts_when_not_overridden() -> No
     assert resolve_learning_starts(learning_starts=None, n_envs=1) is None
     assert resolve_learning_starts(learning_starts=None, n_envs=4) == 10_000
     assert resolve_learning_starts(learning_starts=512, n_envs=4) == 512
+
+
+def test_checkpoint_schedule_uses_real_timesteps() -> None:
+    assert (
+        resolve_next_checkpoint_timestep(current_timesteps=0, checkpoint_interval=250_000)
+        == 250_000
+    )
+    assert (
+        resolve_next_checkpoint_timestep(
+            current_timesteps=250_002,
+            checkpoint_interval=250_000,
+        )
+        == 500_000
+    )
+    assert (
+        resolve_next_checkpoint_timestep(
+            current_timesteps=2_000_000,
+            checkpoint_interval=250_000,
+        )
+        == 2_250_000
+    )

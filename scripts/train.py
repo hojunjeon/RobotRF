@@ -3,12 +3,13 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from robot_sorting_rl.envs import SIDE_BIN_ENV_ID
 from robot_sorting_rl.training import train_sac
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train robot sorting RL policy.")
-    parser.add_argument("--env-id", default="FetchPickAndPlace-v4")
+    parser.add_argument("--env-id", default=SIDE_BIN_ENV_ID)
     parser.add_argument("--algo", choices=["sac"], default="sac")
     parser.add_argument("--total-timesteps", type=int, default=50_000)
     parser.add_argument("--seed", type=int, default=42)

@@ -905,6 +905,125 @@
 - 가정: 현재 단계에서는 Fetch 예제로 MuJoCo 로봇팔 렌더 가능 여부를 확인한다.
 ---
 
+## 032 - 2026-05-15 KST - FetchSideBinPlace 좌표 기반 PNG 스냅샷 생성
+
+### 오늘 한 일
+- 현재 `FetchSideBinPlace-v0` 환경 구성을 한 장 이미지로 확인할 수 있도록 `docs/fetch_side_bin_place_snapshot.png`를 생성했다.
+- 이미지에는 테이블, 정면 물체 시작 위치, 오른쪽 물리 bin, 성공 영역, desired goal/bin center를 표시했다.
+
+### 막힘 문제
+- 실제 MuJoCo 렌더 명령이 Windows `.venv-win\Scripts\python.exe` 프로세스 생성 실패로 실행되지 않았다.
+
+### 해결 방법 / 결정
+- 현재 세션에서는 실제 MuJoCo 프레임 대신 `side_bin_place.py`와 `side_bin_place.xml`의 좌표를 기준으로 한 좌표 기반 PNG 스냅샷을 생성했다.
+- 이미지 상단에 MuJoCo render unavailable 문구를 넣어 실제 렌더와 좌표 기반 미리보기를 구분했다.
+
+### 남은 문제
+- Python 런타임 복구 후 `scripts/render_robotics_env.py --env-id FetchSideBinPlace-v0`로 실제 MuJoCo 렌더 스냅샷을 다시 생성해야 한다.
+
+### 증거
+- 코드 경로: `docs/fetch_side_bin_place_snapshot.png`, `src/robot_sorting_rl/envs/side_bin_place.py`, `src/robot_sorting_rl/assets/fetch/side_bin_place.xml`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\render_robotics_env.py --env-id FetchSideBinPlace-v0 --output docs\fetch_side_bin_place_snapshot.png`
+- 결과 로그/지표: `.venv-win\Scripts\python.exe` 프로세스 생성 실패
+- 실행 명령: PowerShell `System.Drawing` 기반 PNG 생성
+- 결과 로그/지표: `docs/fetch_side_bin_place_snapshot.png`, 124,295 bytes 생성
+- 스크린샷/영상: `docs/fetch_side_bin_place_snapshot.png`
+- 체크포인트/학습 로그: 없음
+- 커밋: 아직 미커밋
+
+### 기록 해당 포인트에게 강조할 관점
+- 채용 담당자: 환경 설계를 시각 증거로 남겨 비전공자도 목표 과제를 이해할 수 있게 했다.
+- 기술 면접관: 실제 렌더 실패와 좌표 기반 대체 이미지를 구분해 기록했다.
+- 개발자/학습자: 물체 시작 좌표, bin 중심, 성공 영역을 한 화면에서 검토할 수 있게 했다.
+
+### 검증 상태
+- 검증 완료: PNG 파일 생성, 이미지 열람 확인
+- 검증 불가: 실제 MuJoCo 렌더 스냅샷
+- 가정: Python 런타임 복구 후 같은 경로에 실제 MuJoCo 렌더 이미지를 덮어쓸 수 있다.
+---
+
+## 031 - 2026-05-15 KST - Side bin 학습/평가/영상 명령어 문서 추가
+
+### 오늘 한 일
+- `FetchSideBinPlace-v0` 기준 학습 시작, TensorBoard 확인, 학습 종료 후 평가, 최종 checkpoint 영상 생성, 250K 단위 checkpoint 영상/평가 명령을 한 문서로 정리했다.
+- 병렬 학습 산출물 `checkpoints/side_bin_wsl_vec6_2m` 기준으로 `250000`부터 `2000000` step까지 영상 생성 명령을 모두 명시했다.
+
+### 막힘 문제
+- 없음
+
+### 해결 방법 / 결정
+- 명령어 문서는 `docs/side_bin_training_commands.md`에 저장했다.
+- 단일 환경 경로와 병렬 환경 경로를 분리하고, 영상 생성은 Windows PowerShell 기준으로 작성했다.
+
+### 남은 문제
+- 실제 checkpoint 생성 후 명령을 실행해 영상 파일과 평가 JSON을 확인해야 한다.
+
+### 증거
+- 코드 경로: `docs/side_bin_training_commands.md`
+- 실행 명령: `git diff --check -- docs/side_bin_training_commands.md`
+- 결과 로그/지표: 통과
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: 없음
+- 커밋: 아직 미커밋
+
+### 기록 해당 포인트에게 강조할 관점
+- 채용 담당자: 실험 실행부터 결과 영상화까지 재현 가능한 운영 명령을 한 곳에 정리했다.
+- 기술 면접관: 250K checkpoint별 rollout을 비교해 학습 진행 과정을 정성적으로 검증할 수 있게 했다.
+- 개발자/학습자: 학습 로그인 `runs`와 정책 영상인 checkpoint rollout을 구분해 기록했다.
+
+### 검증 상태
+- 검증 완료: Markdown diff check
+- 검증 불가: 실제 학습, checkpoint별 영상 생성, 평가 JSON 생성
+- 가정: 2M 학습이 완료되면 `FetchSideBinPlace_v0_sac_250000_steps.zip`부터 `FetchSideBinPlace_v0_sac_2000000_steps.zip`까지 생성된다.
+---
+
+## 031 - 2026-05-15 KST - FetchSideBinPlace 물리 bin 환경 추가
+
+### 오늘 한 일
+- 기본 학습 대상을 `FetchPickAndPlace-v4`에서 프로젝트 로컬 `FetchSideBinPlace-v0`로 전환했다.
+- Fetch XML 기반 장면에 오른쪽 측면 물리 bin geometry를 추가하는 자산 템플릿을 만들었다.
+- 정면 물체 시작 위치, bin 내부 성공 판정, 5 step 유지 성공 조건을 갖는 커스텀 MuJoCo 환경을 추가했다.
+- `train.py`, `evaluate.py`, `record_video.py`, `render_robotics_env.py`, `check_runtime.py` 기본 env id를 새 환경으로 바꿨다.
+- README와 로드맵에 새 기본 환경, sparse+HER 유지, shaped reward 추후 개선 방안을 정리했다.
+
+### 막힘 문제
+- 현재 Windows `.venv-win\Scripts\python.exe`가 프로세스를 만들지 못해 pytest/ruff를 실제 실행하지 못했다.
+- `python`, `py`, `uv`, `conda`, WSL Python도 현재 세션에서 사용할 수 없었다.
+
+### 해결 방법 / 결정
+- 테스트는 먼저 작성했고, 실행 환경 문제 때문에 RED/GREEN 실행은 보류했다.
+- 검증 가능한 범위에서 XML 파싱, env id 연결, line length, 코드/문서 diff를 점검했다.
+- 보상은 1차 구현에서 sparse+HER를 유지하고, shaped reward는 `docs/project_roadmap.md`의 추후 개선 방안으로 분리했다.
+
+### 남은 문제
+- 정상 Python/WSL 환경에서 `FetchSideBinPlace-v0` reset/render, 성공 판정 테스트, smoke training을 실제로 실행해야 한다.
+- 물리 bin 좌표와 카메라 구도는 렌더 스냅샷/영상으로 한 번 더 확인해야 한다.
+
+### 증거
+- 코드 경로: `src/robot_sorting_rl/envs/side_bin_place.py`, `src/robot_sorting_rl/assets/fetch/side_bin_place.xml`, `src/robot_sorting_rl/envs/__init__.py`, `src/robot_sorting_rl/training.py`, `scripts/train.py`, `scripts/evaluate.py`, `scripts/record_video.py`, `scripts/check_runtime.py`, `scripts/render_robotics_env.py`, `tests/test_side_bin_place_env.py`, `README.md`, `docs/project_roadmap.md`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest tests\test_side_bin_place_env.py tests\test_robotics_training_path.py tests\test_check_runtime_script.py tests\test_training_defaults.py -q`
+- 결과 로그/지표: Windows venv 실행 실패, `Unable to create process using ... .venv-win\Scripts\python.exe`
+- 실행 명령: `python --version`, `py --version`, `wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && ~/.venvs/rrf/bin/python --version"`, `Get-Command uv`, `Get-Command conda`
+- 결과 로그/지표: 현재 세션에서 대체 Python 실행 경로 없음
+- 실행 명령: `[xml](Get-Content -Path .\src\robot_sorting_rl\assets\fetch\side_bin_place.xml -Raw) | Out-Null; Write-Output "xml ok"`
+- 결과 로그/지표: `xml ok`
+- 실행 명령: Python 파일 line length PowerShell 점검
+- 결과 로그/지표: 100자 초과 Python 라인 없음
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: 없음
+- 커밋: 아직 미커밋
+
+### 기록 해당 포인트에게 강조할 관점
+- 채용 담당자: 기존 예제 환경을 그대로 쓰지 않고, 목표 과제에 맞는 물리 bin 환경과 성공 판정을 직접 설계했다.
+- 기술 면접관: 성공률은 `info["is_success"]` 기준이며, 물체 중심이 bin 내부에 연속 5 step 머무르는 조건으로 평가한다.
+- 개발자/학습자: sparse reward + HER를 먼저 유지하고, shaped reward는 실제 학습 결과를 본 뒤 추가 실험으로 분리했다.
+
+### 검증 상태
+- 검증 완료: XML 파싱, env id 연결 텍스트 점검, Python line length 점검
+- 검증 불가: pytest, ruff, check_runtime, smoke training, 렌더 스냅샷
+- 가정: 정상 WSL/Windows Python 환경에서는 새 env 등록 후 `gym.make("FetchSideBinPlace-v0")`가 실행될 것이다.
+---
+
 ## 020 - 2026-05-14 KST - Windows/WSL venv 분리와 checkpoint rollout 검증
 
 ### 오늘 한 일
@@ -1358,4 +1477,246 @@
 - 검증 완료: `--resume-from` CLI/API 계약, checkpoint 로드 smoke, 누적 timestep 로그, 전체 pytest, 전체 ruff
 - 검증 불가: replay buffer 완전 복원, 주말 `vec6` 장기 학습 결과
 - 가정: 월요일 추가 학습은 `checkpoints/fetch_wsl_vec6_2m/FetchPickAndPlace_v4_sac.zip`를 `--resume-from`으로 지정해 시작한다.
+---
+
+## 030 - 2026-05-15 KST - 병렬 학습 checkpoint를 실제 timestep 기준 250K 단위로 저장
+
+### 오늘 한 일
+- `n_envs > 1`에서 `--checkpoint-interval 500000`이 실제로는 callback 호출 횟수 기준으로 해석되어 중간 checkpoint가 저장되지 않던 원인을 확인했다.
+- Stable-Baselines3 `CheckpointCallback` 대신 실제 누적 timestep 기준으로 저장하는 `TimestepCheckpointCallback`을 추가했다.
+- `resolve_next_checkpoint_timestep()` 테스트를 추가해 `0 -> 250K`, `250002 -> 500K`, `2M -> 2.25M` 경계 계산을 고정했다.
+- 병렬 학습 준비 문서에 `250000`, `500000`, `750000`, `1000000` step처럼 250K 단위 checkpoint가 저장된다고 명시했다.
+
+### 막힌 문제
+- 기존 `fetch_wsl_vec6_2m` 학습에는 최종 checkpoint만 있고, 500k/1M/1.5M 중간 checkpoint는 생성되지 않았다.
+- 첫 smoke 검증은 HER `learning_starts`가 너무 낮아 첫 episode 종료 전 sampling 오류가 발생했다.
+
+### 해결 방법 / 결정
+- checkpoint 저장 조건을 callback 호출 수가 아니라 `self.num_timesteps >= next_checkpoint_timestep`으로 바꿨다.
+- 짧은 smoke에서는 checkpoint 저장만 검증하기 위해 `learning_starts`를 총 학습 step보다 크게 설정했다.
+
+### 남은 문제
+- 이미 지나간 `fetch_wsl_vec6_2m`의 500k/1M/1.5M checkpoint는 복구할 수 없다.
+- 0부터 250K 단위 성장 기록을 남기려면 수정된 코드로 새 학습을 다시 시작해야 한다.
+
+### 증거
+- 코드 경로: `src/robot_sorting_rl/training.py`, `tests/test_training_defaults.py`, `docs/parallel_training_preparation.md`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest tests\test_training_defaults.py -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 18 --seed 42 --output-dir checkpoints\timestep_checkpoint_smoke2 --tensorboard-log runs\timestep_checkpoint_smoke2 --n-envs 2 --batch-size 256 --gradient-steps 1 --learning-starts 100 --log-interval-steps 6 --checkpoint-interval 10`
+- 실행 명령: `Get-ChildItem -Path checkpoints\timestep_checkpoint_smoke2 | Select-Object Name,Length`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest -q`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m ruff check .`
+- 결과 로그/지표: smoke checkpoint `FetchPickAndPlace_v4_sac_10_steps.zip`와 최종 `FetchPickAndPlace_v4_sac.zip` 저장 확인
+- 결과 로그/지표: 전체 pytest `19 passed in 2.43s`, ruff `All checks passed!`
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: `checkpoints\timestep_checkpoint_smoke2`, `runs\timestep_checkpoint_smoke2`
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 원하는 성장 기록 산출물을 얻기 위해 실제 산출물 폴더를 확인하고, 도구의 callback 기준 차이를 찾아 수정했다.
+- 기술 면접관: SB3 callback의 `save_freq`가 vectorized env timestep과 다르게 동작하는 문제를 root cause로 분리했다.
+- 개발자 학습용: 병렬 환경에서는 callback 호출 수와 누적 timestep이 다르므로 checkpoint 저장 조건을 직접 timestep 기준으로 잡아야 한다.
+
+### 검증 상태
+- 검증 완료: 실패 테스트, 실제 timestep checkpoint smoke, 전체 pytest, 전체 ruff
+- 검증 불가: 새 2M 장기 학습에서 250K 단위 checkpoint가 모두 생성되는지 장시간 검증
+- 가정: 수정 후 `--checkpoint-interval 250000`은 `n_envs=6`에서도 누적 timestep 기준 250K마다 저장된다.
+---
+
+## 033 - 2026-05-15 KST - rollout 영상 첫 프레임 불연속 완화
+
+### 오늘 한 일
+- checkpoint 기반 `scripts/record_video.py` 영상에서 reset 직후 프레임과 첫 정책 step 이후 프레임이 이어지지 않는 증상을 디버깅했다.
+- 녹화 프레임 수집을 `collect_rollout_frames()`로 분리하고, 첫 저장 프레임을 reset 직후가 아니라 첫 environment step 이후 렌더로 시작하도록 바꿨다.
+- fake env/model 기반 단위 테스트를 추가해 저장 프레임이 `[step 1, step 2, ...]` 순서로 시작한다는 계약을 고정했다.
+
+### 막힌 문제
+- 현재 Windows `.venv-win`의 `python.exe`가 프로세스를 만들지 못해 pytest 실행이 불가했다.
+- WSL 배포판도 사용할 수 없어 실제 MuJoCo 영상 재생산 검증은 하지 못했다.
+
+### 해결 방법 / 결정
+- 첫 프레임만 reset 직후 상태로 섞이는 녹화 스크립트 구조를 원인으로 보고, 영상 시작점을 정책 rollout의 첫 step 이후로 맞췄다.
+- 기존 checkpoint, 학습 코드, 환경 dynamics는 건드리지 않았다.
+
+### 남은 문제
+- Python/WSL 런타임 복구 후 실제 checkpoint로 MP4를 다시 생성해 첫 컷 연결감을 육안 확인해야 한다.
+
+### 증거
+- 코드 경로: `scripts/record_video.py`, `tests/test_record_video.py`, `docs/recording_handoff_log.md`
+- 실행 명령: `.\.venv-win\Scripts\pytest.exe tests\test_record_video.py -q`
+- 실행 명령: `.\.venv-win\Scripts\ruff.exe check scripts\record_video.py tests\test_record_video.py`
+- 결과 로그/지표: pytest 실행 실패 - `.venv-win\Scripts\python.exe` 프로세스 생성 불가
+- 결과 로그/지표: ruff `All checks passed!`
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: 없음
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 모델 성능을 과장하지 않고, 포트폴리오 영상 품질 문제를 재현 가능한 코드 계약으로 좁혔다.
+- 기술 면접관: reset frame과 rollout frame을 섞는 데이터 수집 경계 문제로 보고 영상 추출 계층에서 최소 수정했다.
+- 개발자 학습용: 실제 환경 실행이 막힌 경우에도 fake env/model로 녹화 순서 계약을 테스트할 수 있게 만들었다.
+
+### 검증 상태
+- 검증 완료: `ruff check scripts\record_video.py tests\test_record_video.py`
+- 검증 불가: pytest, 실제 MuJoCo MP4 재생성, 영상 육안 확인
+- 가정: 사용자가 말한 “checkout”은 checkpoint 기반 영상 추출을 의미한다.
+---
+
+## 034 - 2026-05-15 KST - rollout 영상 시작/종료 정지 구간 추가
+
+### 오늘 한 일
+- `scripts/record_video.py`에 `--start-delay-seconds`, `--end-delay-seconds`, `--fps` 옵션을 추가했다.
+- 기본값으로 시작 전 1초, 종료 후 1초 정지 프레임을 영상에 포함하도록 했다.
+- fake env/model 테스트에 시작 지연과 종료 지연 프레임 순서 계약을 추가했다.
+
+### 막힌 문제
+- 현재 Windows `.venv-win`의 `python.exe`가 프로세스를 만들지 못해 pytest 실행이 불가했다.
+
+### 해결 방법 / 결정
+- 지연은 실제 wall-clock sleep이 아니라 같은 상태를 여러 프레임 렌더해 MP4에 붙이는 방식으로 구현했다.
+- 로봇 정책 action은 start delay 프레임이 기록된 뒤부터 적용된다.
+
+### 남은 문제
+- Python 런타임 복구 후 실제 checkpoint로 MP4를 다시 생성해 시작/종료 정지 구간을 확인해야 한다.
+
+### 증거
+- 코드 경로: `scripts/record_video.py`, `tests/test_record_video.py`, `docs/recording_handoff_log.md`
+- 실행 명령: `.\.venv-win\Scripts\pytest.exe tests\test_record_video.py -q`
+- 실행 명령: `.\.venv-win\Scripts\ruff.exe check scripts\record_video.py tests\test_record_video.py`
+- 결과 로그/지표: pytest 실행 실패 - `.venv-win\Scripts\python.exe` 프로세스 생성 불가
+- 결과 로그/지표: ruff `All checks passed!`
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: 없음
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 포트폴리오 영상의 시청성을 개선하기 위해 움직임 시작/종료 전후 여백을 자동화했다.
+- 기술 면접관: 영상 지연은 환경 step을 진행하지 않는 동일 상태 렌더 반복으로 구현해 rollout dynamics를 바꾸지 않았다.
+- 개발자 학습용: fps와 초 단위 옵션을 분리해 필요한 프레임 수를 `seconds * fps`로 계산한다.
+
+### 검증 상태
+- 검증 완료: `ruff check scripts\record_video.py tests\test_record_video.py`
+- 검증 불가: pytest, 실제 MuJoCo MP4 재생성, 영상 육안 확인
+- 가정: 기본 1초 여백이 충분하지 않으면 CLI 옵션으로 조정한다.
+---
+
+## 035 - 2026-05-15 KST - 영상 생성 문서에 시작/종료 여백 옵션 반영
+
+### 오늘 한 일
+- README, 로드맵, 새 머신 세팅 문서, 병렬 학습 준비 문서, side-bin 명령 문서의 `record_video.py` 예시에 시작/종료 1초 여백 옵션을 명시했다.
+- Makefile의 `record-fetch` 명령도 같은 옵션으로 맞췄다.
+
+### 막힌 문제
+- 과거 실행 증거를 담은 `docs/recording_handoff_log.md` 이전 항목의 명령은 당시 실제 실행 명령이므로 소급 수정하지 않았다.
+
+### 해결 방법 / 결정
+- 문서 예시는 `--start-delay-seconds 1 --end-delay-seconds 1 --fps 25`를 명시해 기본값에 의존하지 않도록 했다.
+
+### 남은 문제
+- 없음
+
+### 증거
+- 코드 경로: `README.md`, `docs/parallel_training_preparation.md`, `docs/project_roadmap.md`, `docs/setup_new_machine.md`, `docs/side_bin_training_commands.md`, `Makefile`, `docs/recording_handoff_log.md`
+- 실행 명령: `rg --pcre2 -n "record_video\.py(?!.*start-delay-seconds)" README.md docs Makefile`
+- 실행 명령: `git diff --check -- README.md docs\parallel_training_preparation.md docs\project_roadmap.md docs\setup_new_machine.md docs\side_bin_training_commands.md Makefile`
+- 실행 명령: `.\.venv-win\Scripts\ruff.exe check scripts\record_video.py tests\test_record_video.py`
+- 결과 로그/지표: 문서/Makefile 대상 `record_video.py` 예시는 새 옵션 포함 확인
+- 결과 로그/지표: diff check 통과, ruff `All checks passed!`
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: 없음
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 영상 품질 개선 옵션을 실제 사용 문서까지 반영해 재현 가능한 산출물 생성 흐름을 정리했다.
+- 기술 면접관: rollout dynamics 자체를 바꾸지 않고 MP4 앞뒤에 동일 상태 프레임만 추가한다는 점을 문서화했다.
+- 개발자 학습용: 기본값이 있어도 문서 명령에는 중요한 영상 품질 옵션을 명시하는 편이 재현성에 유리하다.
+
+### 검증 상태
+- 검증 완료: record_video 문서 예시 검색, diff check, ruff
+- 검증 불가: 실제 MP4 재생성
+- 가정: 과거 evidence log의 실행 명령은 당시 사실 기록이므로 업데이트 대상에서 제외한다.
+---
+
+## 036 - 2026-05-15 KST - Side bin 물체 관통 판정 원인 확인 및 성공 영역 보정
+
+### 오늘 한 일
+- `videos/6_1_50.mp4`를 ffmpeg로 프레임 추출해 bin 주변 확대 컷을 확인했다.
+- 물체 중심만 bin 내부에 들어오면 성공으로 볼 수 있어, 실제 큐브 부피가 벽/바닥과 겹칠 수 있는 원인을 확인했다.
+- `FetchSideBinPlaceEnv` 성공/보상 판정에 물체 반변 길이 `0.025m` clearance를 반영했다.
+- 벽/바닥과 겹치는 위치는 성공하지 않고, clearance가 확보된 위치만 성공하는 테스트를 추가했다.
+
+### 막힌 문제
+- 현재 Windows `.venv-win`의 `python.exe`가 프로세스를 만들지 못해 pytest와 새 MP4 재생성을 실행하지 못했다.
+
+### 해결 방법 / 결정
+- bin의 실제 벽 내부 좌표와 물체 반변 길이를 분리했다.
+- sparse reward도 목표 박스 tolerance가 아니라 clearance가 반영된 bin 내부 영역 기준으로 계산하도록 맞췄다.
+
+### 남은 문제
+- 기존 checkpoint는 이전 판정 기준으로 학습된 것이므로, 수정된 환경 기준으로 재평가/재학습해야 한다.
+- gripper가 bin 벽을 밀고 들어가는 문제는 별도 obstacle-avoidance reward나 bin 구조 조정이 필요할 수 있다.
+
+### 증거
+- 코드 경로: `src/robot_sorting_rl/envs/side_bin_place.py`, `tests/test_side_bin_place_env.py`, `videos/6_1_50_contact.png`, `videos/6_1_50_bin_zoom.png`
+- 실행 명령: `.\.venv-win\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe -y -i videos\6_1_50.mp4 -vf "fps=2,scale=320:-1,tile=5x4" videos\6_1_50_contact.png`
+- 실행 명령: `.\.venv-win\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe -y -i videos\6_1_50.mp4 -vf "fps=5,crop=220:180:235:135,scale=660:540,tile=5x6" videos\6_1_50_bin_zoom.png`
+- 실행 명령: `.\.venv-win\Scripts\pytest.exe tests\test_side_bin_place_env.py -q`
+- 실행 명령: `.\.venv-win\Scripts\ruff.exe check src\robot_sorting_rl\envs\side_bin_place.py tests\test_side_bin_place_env.py`
+- 결과 로그/지표: pytest 실행 실패 - `.venv-win\Scripts\python.exe` 프로세스 생성 불가
+- 결과 로그/지표: ruff `All checks passed!`
+- 스크린샷/영상: `videos/6_1_50.mp4`, `videos/6_1_50_contact.png`, `videos/6_1_50_bin_zoom.png`
+- 체크포인트/학습 로그: 없음
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 영상 품질 문제를 감각적으로 넘기지 않고 프레임 증거와 환경 판정 로직으로 원인을 좁혔다.
+- 기술 면접관: 성공 판정에서 객체 중심 좌표와 객체 부피 clearance를 구분해야 한다는 점을 반영했다.
+- 개발자 학습용: 기존 checkpoint 영상은 이전 환경 계약의 산출물이므로, 환경 수정 후 재평가/재학습이 필요하다.
+
+### 검증 상태
+- 검증 완료: 영상 프레임 추출 확인, ruff
+- 검증 불가: pytest, 수정 환경 기반 재평가/재녹화
+- 가정: 영상에서 보인 “박스 관통”의 핵심 원인 중 하나는 성공 영역이 객체 부피가 아닌 객체 중심 기준으로 잡힌 것이다.
+---
+
+## 037 - 2026-05-15 KST - Side bin 관통 방지 물리/contact 보강
+
+### 오늘 한 일
+- side bin 벽을 두껍고 높게 만들고, contact `condim`, `friction`, `solimp`, `solref`를 명시했다.
+- `FetchSideBinPlaceEnv`의 gripper 위치 action scale을 `0.05m`에서 `0.02m`로 줄여 좁은 bin 주변에서 한 step 이동량을 낮췄다.
+- object 또는 gripper finger가 side bin wall과 접촉하면 `is_wall_contact`를 info에 남기고, 성공 streak를 리셋하며 sparse reward를 `-1`로 유지하게 했다.
+- checkpoint rollout 중 wall contact step과 contact pair를 출력하는 `scripts/inspect_side_bin_contacts.py`를 추가했다.
+
+### 막힌 문제
+- 현재 Windows `.venv-win`의 `python.exe`가 프로세스를 만들지 못해 pytest와 실제 contact rollout 진단을 실행하지 못했다.
+
+### 해결 방법 / 결정
+- HER replay의 reward 재계산 한계를 고려해, 핵심 수정은 물리 collider 보강과 action scale 축소에 뒀다.
+- 실제 step reward에는 wall contact penalty를 반영해, 벽을 밀고 들어가는 transition이 바로 성공 보상으로 남지 않게 했다.
+
+### 남은 문제
+- Python/WSL 런타임 복구 후 기존 checkpoint로 `inspect_side_bin_contacts.py`를 실행해 contact 로그를 확인해야 한다.
+- 수정된 환경은 기존 checkpoint와 dynamics/reward가 달라졌으므로 새 학습이 필요하다.
+
+### 증거
+- 코드 경로: `src/robot_sorting_rl/assets/fetch/side_bin_place.xml`, `src/robot_sorting_rl/envs/side_bin_place.py`, `tests/test_side_bin_place_env.py`, `scripts/inspect_side_bin_contacts.py`, `docs/recording_handoff_log.md`
+- 실행 명령: `.\.venv-win\Scripts\pytest.exe tests\test_side_bin_place_env.py -q`
+- 실행 명령: `.\.venv-win\Scripts\ruff.exe check src\robot_sorting_rl\envs\side_bin_place.py tests\test_side_bin_place_env.py scripts\inspect_side_bin_contacts.py`
+- 실행 명령: `[xml](Get-Content -Path .\src\robot_sorting_rl\assets\fetch\side_bin_place.xml -Raw) | Out-Null; Write-Output "xml ok"`
+- 실행 명령: `git diff --check -- src\robot_sorting_rl\envs\side_bin_place.py src\robot_sorting_rl\assets\fetch\side_bin_place.xml tests\test_side_bin_place_env.py scripts\inspect_side_bin_contacts.py`
+- 결과 로그/지표: pytest 실행 실패 - `.venv-win\Scripts\python.exe` 프로세스 생성 불가
+- 결과 로그/지표: ruff `All checks passed!`, XML `xml ok`, diff check 통과
+- 스크린샷/영상: 없음
+- 체크포인트/학습 로그: 없음
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 영상에서 발견된 결함을 성공 판정 보정으로 덮지 않고, 물리/contact/action 계층까지 원인을 나눠 수정했다.
+- 기술 면접관: HER reward 재계산과 이력 기반 wall-contact penalty의 한계를 구분하고, 물리 보강을 1차 해결책으로 삼았다.
+- 개발자 학습용: contact pair 로그를 남기는 진단 스크립트를 추가해 다음 영상 문제를 증거 기반으로 분석할 수 있게 했다.
+
+### 검증 상태
+- 검증 완료: ruff, XML 파싱, diff check
+- 검증 불가: pytest, 실제 MuJoCo contact rollout 진단, 재학습 후 영상 확인
+- 가정: wall contact penalty는 실제 step reward에는 반영되지만 HER virtual transition reward에는 완전히 재현되지 않을 수 있다.
 ---

@@ -20,7 +20,7 @@ wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && ~/.venvs/rrf/bin/python sc
 영상 생성:
 
 ```powershell
-.\.venv-win\Scripts\python.exe scripts\record_video.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints\fetch_wsl_2m\FetchPickAndPlace_v4_sac.zip --output videos\fetch_wsl_2m_rollout.mp4 --max-steps 50
+.\.venv-win\Scripts\python.exe scripts\record_video.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints\fetch_wsl_2m\FetchPickAndPlace_v4_sac.zip --output videos\fetch_wsl_2m_rollout.mp4 --max-steps 50 --start-delay-seconds 1 --end-delay-seconds 1 --fps 25
 ```
 
 기록할 값:
@@ -30,7 +30,7 @@ wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && ~/.venvs/rrf/bin/python sc
 - seed: `42`
 - timesteps: `2000000`
 - checkpoint: `checkpoints/fetch_wsl_2m/FetchPickAndPlace_v4_sac.zip`
-- interval checkpoints: `checkpoints/fetch_wsl_2m/FetchPickAndPlace_v4_sac_500000_steps.zip`, `..._1000000_steps.zip`, `..._1500000_steps.zip`, `..._2000000_steps.zip`
+- interval checkpoints: `checkpoints/fetch_wsl_2m/FetchPickAndPlace_v4_sac_250000_steps.zip`, `..._500000_steps.zip`, `..._750000_steps.zip`, `..._1000000_steps.zip`
 - TensorBoard log: `runs/fetch_wsl_2m`
 - evaluation output: `evals/fetch_results.json`
 - video: `videos/fetch_wsl_2m_rollout.mp4`
@@ -67,17 +67,18 @@ saved checkpoint: checkpoints/parallel_autostart_smoke_wsl/FetchPickAndPlace_v4_
 ## 4. 병렬 학습 명령
 
 ```powershell
-wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ~/.venvs/rrf/bin/python scripts/train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 2000000 --seed 42 --output-dir checkpoints/fetch_wsl_vec6_2m --tensorboard-log runs/fetch_wsl_vec6_2m --n-envs 6 --batch-size 512 --buffer-size 1000000 --gradient-steps -1 --learning-starts 10000 --n-sampled-goal 4 --log-interval-steps 10000 --checkpoint-interval 500000"
+wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ~/.venvs/rrf/bin/python scripts/train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 2000000 --seed 42 --output-dir checkpoints/fetch_wsl_vec6_2m --tensorboard-log runs/fetch_wsl_vec6_2m --n-envs 6 --batch-size 512 --buffer-size 1000000 --gradient-steps -1 --learning-starts 10000 --n-sampled-goal 4 --log-interval-steps 10000 --checkpoint-interval 250000"
 ```
 
 이 명령은 하나의 SAC policy가 6개 MuJoCo 환경에서 샘플을 모으는 방식이다. Isaac Lab처럼 한 화면에 여러 로봇이 동시에 렌더링되는 방식은 아니다.
+`--checkpoint-interval 250000`은 병렬 환경 수와 무관하게 실제 누적 timestep 기준으로 동작하므로, `250000`, `500000`, `750000`, `1000000` step처럼 250K 단위 checkpoint가 저장된다.
 
 ## 5. 병렬 checkpoint에서 이어학습
 
 주말 학습 결과가 부족하면 최종 checkpoint에서 이어서 추가 학습한다. 아래 명령은 기존 `fetch_wsl_vec6_2m` checkpoint를 불러와 1M timestep을 더 학습하고, 새 checkpoint는 `fetch_wsl_vec6_3m`에 저장한다.
 
 ```powershell
-wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ~/.venvs/rrf/bin/python scripts/train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 1000000 --seed 42 --output-dir checkpoints/fetch_wsl_vec6_3m --tensorboard-log runs/fetch_wsl_vec6_2m --n-envs 6 --batch-size 512 --buffer-size 1000000 --gradient-steps -1 --learning-starts 10000 --n-sampled-goal 4 --log-interval-steps 10000 --checkpoint-interval 500000 --resume-from checkpoints/fetch_wsl_vec6_2m/FetchPickAndPlace_v4_sac.zip"
+wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ~/.venvs/rrf/bin/python scripts/train.py --env-id FetchPickAndPlace-v4 --algo sac --total-timesteps 1000000 --seed 42 --output-dir checkpoints/fetch_wsl_vec6_3m --tensorboard-log runs/fetch_wsl_vec6_2m --n-envs 6 --batch-size 512 --buffer-size 1000000 --gradient-steps -1 --learning-starts 10000 --n-sampled-goal 4 --log-interval-steps 10000 --checkpoint-interval 250000 --resume-from checkpoints/fetch_wsl_vec6_2m/FetchPickAndPlace_v4_sac.zip"
 ```
 
 ## 6. 병렬 학습 후 평가
@@ -91,7 +92,7 @@ wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && ~/.venvs/rrf/bin/python sc
 영상 생성:
 
 ```powershell
-.\.venv-win\Scripts\python.exe scripts\record_video.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints\fetch_wsl_vec6_2m\FetchPickAndPlace_v4_sac.zip --output videos\fetch_wsl_vec6_2m_rollout.mp4 --max-steps 50
+.\.venv-win\Scripts\python.exe scripts\record_video.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints\fetch_wsl_vec6_2m\FetchPickAndPlace_v4_sac.zip --output videos\fetch_wsl_vec6_2m_rollout.mp4 --max-steps 50 --start-delay-seconds 1 --end-delay-seconds 1 --fps 25
 ```
 
 ## 7. 비교 기준

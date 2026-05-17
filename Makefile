@@ -14,4 +14,4 @@ eval-fetch:
 	python3 scripts/evaluate.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints/fetch_wsl_500k/FetchPickAndPlace_v4_sac.zip --episodes 100
 
 record-fetch:
-	python3 scripts/record_video.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints/fetch_wsl_500k/FetchPickAndPlace_v4_sac.zip --output videos/fetch_wsl_500k_rollout.mp4 --max-steps 50
+	python3 scripts/record_video.py --env-id FetchPickAndPlace-v4 --checkpoint checkpoints/fetch_wsl_500k/FetchPickAndPlace_v4_sac.zip --output videos/fetch_wsl_500k_rollout.mp4 --max-steps 50 --start-delay-seconds 1 --end-delay-seconds 1 --fps 25
