@@ -35,6 +35,7 @@ class FetchSideBinPlaceEnv(MujocoFetchEnv, EzPickle):
         **kwargs,
     ):
         self.object_half_size = 0.025
+        self.object_table_z = 0.425
         self.bin_floor_z = 0.410
         self.bin_wall_top_z = 0.570
         self.bin_wall_inner_min = np.array([1.215, 0.915], dtype=np.float64)
@@ -126,6 +127,13 @@ class FetchSideBinPlaceEnv(MujocoFetchEnv, EzPickle):
         return True
 
     def compute_reward(self, achieved_goal, goal, info):
+        if self.reward_type == "shaped":
+            return self._compute_shaped_reward(
+                achieved_goal=achieved_goal,
+                desired_goal=goal,
+                gripper_position=None,
+                wall_contact=False,
+            )
         if self.reward_type == "dense":
             return -np.linalg.norm(achieved_goal - goal, axis=-1)
         success = self._within_bin_clearance(achieved_goal)
@@ -135,9 +143,17 @@ class FetchSideBinPlaceEnv(MujocoFetchEnv, EzPickle):
         obs, reward, terminated, truncated, info = super().step(action)
         wall_contact = self._has_wall_contact()
         info["is_wall_contact"] = wall_contact
+        if self.reward_type == "shaped":
+            reward = self._compute_shaped_reward(
+                achieved_goal=obs["achieved_goal"],
+                desired_goal=obs["desired_goal"],
+                gripper_position=self._gripper_position(),
+                wall_contact=wall_contact,
+            )
         if wall_contact:
             info["is_success"] = np.float32(0.0)
-            reward = self._apply_wall_contact_reward(reward, wall_contact)
+            if self.reward_type != "shaped":
+                reward = self._apply_wall_contact_reward(reward, wall_contact)
             self._success_streak = 0
         return obs, reward, terminated, truncated, info
 
@@ -200,6 +216,36 @@ class FetchSideBinPlaceEnv(MujocoFetchEnv, EzPickle):
         if self.reward_type == "dense":
             return reward - 1.0
         return np.float32(-1.0)
+
+    def _compute_shaped_reward(
+        self,
+        achieved_goal,
+        desired_goal,
+        gripper_position,
+        wall_contact: bool,
+    ):
+        achieved_goal = np.asarray(achieved_goal, dtype=np.float64)
+        desired_goal = np.asarray(desired_goal, dtype=np.float64)
+        object_to_goal = np.linalg.norm(achieved_goal - desired_goal, axis=-1)
+        reward = -object_to_goal
+
+        lift = np.clip((achieved_goal[..., 2] - self.object_table_z) / 0.10, 0.0, 1.0)
+        reward = reward + 0.25 * lift
+
+        success = self._within_bin_clearance(achieved_goal)
+        reward = reward + success.astype(np.float64) * 2.0
+
+        if gripper_position is not None:
+            gripper_position = np.asarray(gripper_position, dtype=np.float64)
+            gripper_to_object = np.linalg.norm(gripper_position - achieved_goal, axis=-1)
+            reward = reward - 0.20 * gripper_to_object
+
+        if wall_contact:
+            reward = reward - 1.0
+        return reward.astype(np.float32) if isinstance(reward, np.ndarray) else np.float32(reward)
+
+    def _gripper_position(self) -> np.ndarray:
+        return self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
 
     def _within_goal_box(self, achieved_goal, goal):
         achieved_goal = np.asarray(achieved_goal)

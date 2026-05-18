@@ -53,6 +53,7 @@ wsl -- bash -lc "cd /mnt/c/Users/SSAFY/Desktop/RRF && ~/.venvs/rrf/bin/python -m
 Use these from Git Bash at the repository root:
 
 ```bash
+./rrf train-fixed-2m
 ./rrf resume-3m
 ./rrf eval
 ./rrf video
@@ -64,9 +65,14 @@ Common variants:
 
 ```bash
 ./rrf train-2m
+./rrf train-fixed-2m
 ./rrf eval checkpoints/side_bin_contact_safe_vec6_3p5m/FetchSideBinPlace_v0_sac_3500000_steps.zip
 ./rrf video checkpoints/side_bin_contact_safe_vec6_3p5m/FetchSideBinPlace_v0_sac_3500000_steps.zip
 ```
+
+`./rrf train-fixed-2m` starts a fresh shaped-reward run in
+`checkpoints/side_bin_shaped_vec6_2m`. Use this when the contact-safe resume run
+visually gets stuck near the cube without moving it.
 
 `./rrf resume-3m` continues from
 `checkpoints/side_bin_contact_safe_vec6_2m/FetchSideBinPlace_v0_sac_500000_steps.zip`,

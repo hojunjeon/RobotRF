@@ -134,3 +134,48 @@ def test_side_bin_wall_contact_keeps_sparse_reward_negative():
         assert env.unwrapped._apply_wall_contact_reward(np.float32(0.0), False) == 0.0
     finally:
         env.close()
+
+
+def test_side_bin_shaped_reward_rewards_object_progress_toward_bin():
+    env = make_env(env_id="FetchSideBinPlace-v0", reward_type="shaped")
+    try:
+        unwrapped = env.unwrapped
+        start = np.array([1.30, 0.70, unwrapped.object_table_z])
+        near_bin = np.array([1.30, 0.90, unwrapped.object_table_z + 0.04])
+        in_bin = unwrapped.bin_center.copy()
+        in_bin[2] = unwrapped.bin_floor_z + 0.04
+
+        start_reward = unwrapped.compute_reward(start, unwrapped.bin_center, {})
+        near_reward = unwrapped.compute_reward(near_bin, unwrapped.bin_center, {})
+        success_reward = unwrapped.compute_reward(in_bin, unwrapped.bin_center, {})
+    finally:
+        env.close()
+
+    assert near_reward > start_reward
+    assert success_reward > near_reward
+
+
+def test_side_bin_step_shaped_reward_guides_gripper_to_object():
+    env = make_env(env_id="FetchSideBinPlace-v0", reward_type="shaped")
+    try:
+        unwrapped = env.unwrapped
+        object_position = np.array([1.30, 0.70, unwrapped.object_table_z])
+        far_gripper = np.array([1.30, 1.00, unwrapped.object_table_z + 0.20])
+        near_gripper = object_position + np.array([0.0, 0.0, 0.03])
+
+        far_reward = unwrapped._compute_shaped_reward(
+            achieved_goal=object_position,
+            desired_goal=unwrapped.bin_center,
+            gripper_position=far_gripper,
+            wall_contact=False,
+        )
+        near_reward = unwrapped._compute_shaped_reward(
+            achieved_goal=object_position,
+            desired_goal=unwrapped.bin_center,
+            gripper_position=near_gripper,
+            wall_contact=False,
+        )
+    finally:
+        env.close()
+
+    assert near_reward > far_reward

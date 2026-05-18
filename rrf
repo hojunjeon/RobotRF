@@ -10,6 +10,8 @@ SEED="42"
 
 BASE_OUT="checkpoints/side_bin_contact_safe_vec6_2m"
 BASE_RUN="runs/side_bin_contact_safe_vec6_2m"
+FIXED_OUT="checkpoints/side_bin_shaped_vec6_2m"
+FIXED_RUN="runs/side_bin_shaped_vec6_2m"
 RESUME_FROM="${BASE_OUT}/FetchSideBinPlace_v0_sac_500000_steps.zip"
 RESUME_OUT="checkpoints/side_bin_contact_safe_vec6_3p5m"
 RESUME_RUN="runs/side_bin_contact_safe_vec6_3p5m"
@@ -19,6 +21,7 @@ usage() {
   cat <<'EOF'
 Usage:
   ./rrf train-2m       Start the 6-env side-bin SAC run from scratch
+  ./rrf train-fixed-2m Start a shaped-reward 6-env run from scratch
   ./rrf resume-3m      Continue from the 500K checkpoint for 3M more steps
   ./rrf eval [zip]     Evaluate a checkpoint, defaulting to the resumed final model
   ./rrf video [zip]    Record an MP4 rollout for a checkpoint
@@ -37,11 +40,15 @@ run_wsl() {
 }
 
 train_2m() {
-  run_wsl "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ${WSL_PY} scripts/train.py --env-id ${ENV_ID} --algo sac --total-timesteps 2000000 --seed ${SEED} --output-dir ${BASE_OUT} --tensorboard-log ${BASE_RUN} --n-envs 6 --batch-size 512 --buffer-size 1000000 --gradient-steps -1 --learning-starts 10000 --n-sampled-goal 4 --log-interval-steps 10000 --checkpoint-interval 250000"
+  run_wsl "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ${WSL_PY} scripts/train.py --env-id ${ENV_ID} --algo sac --total-timesteps 2000000 --seed ${SEED} --output-dir ${BASE_OUT} --tensorboard-log ${BASE_RUN} --n-envs 6 --reward-type shaped --batch-size 512 --buffer-size 1000000 --gradient-steps -1 --learning-starts 10000 --n-sampled-goal 4 --log-interval-steps 10000 --checkpoint-interval 250000"
+}
+
+train_fixed_2m() {
+  run_wsl "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ${WSL_PY} scripts/train.py --env-id ${ENV_ID} --algo sac --total-timesteps 2000000 --seed ${SEED} --output-dir ${FIXED_OUT} --tensorboard-log ${FIXED_RUN} --n-envs 6 --reward-type shaped --batch-size 512 --buffer-size 1000000 --gradient-steps -1 --learning-starts 10000 --n-sampled-goal 4 --log-interval-steps 10000 --checkpoint-interval 250000"
 }
 
 resume_3m() {
-  run_wsl "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ${WSL_PY} scripts/train.py --env-id ${ENV_ID} --algo sac --total-timesteps 3000000 --seed ${SEED} --output-dir ${RESUME_OUT} --tensorboard-log ${RESUME_RUN} --n-envs 6 --batch-size 512 --buffer-size 1000000 --gradient-steps -1 --learning-starts 510000 --n-sampled-goal 4 --log-interval-steps 10000 --checkpoint-interval 250000 --resume-from ${RESUME_FROM}"
+  run_wsl "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ${WSL_PY} scripts/train.py --env-id ${ENV_ID} --algo sac --total-timesteps 3000000 --seed ${SEED} --output-dir ${RESUME_OUT} --tensorboard-log ${RESUME_RUN} --n-envs 6 --reward-type shaped --batch-size 512 --buffer-size 1000000 --gradient-steps -1 --learning-starts 510000 --n-sampled-goal 4 --log-interval-steps 10000 --checkpoint-interval 250000 --resume-from ${RESUME_FROM}"
 }
 
 evaluate_checkpoint() {
@@ -55,7 +62,7 @@ record_video() {
   local checkpoint="${1:-${FINAL_CHECKPOINT}}"
   local safe_name
   safe_name="$(basename "${checkpoint}" .zip | tr '/\\:' '___')"
-  "${WIN_PY}" scripts/record_video.py --env-id "${ENV_ID}" --checkpoint "${checkpoint}" --output "videos/${safe_name}_rollout.mp4" --max-steps 50 --start-delay-seconds 1 --end-delay-seconds 1 --fps 25
+  "${WIN_PY}" scripts/record_video.py --env-id "${ENV_ID}" --checkpoint "${checkpoint}" --output "videos/${safe_name}_rollout.mp4" --max-steps 100 --start-delay-seconds 1 --end-delay-seconds 1 --fps 25
 }
 
 tensorboard() {
@@ -64,6 +71,7 @@ tensorboard() {
 
 status() {
   echo "Base output:    ${BASE_OUT}"
+  echo "Fixed output:   ${FIXED_OUT}"
   echo "Resume input:   ${RESUME_FROM}"
   echo "Resume output:  ${RESUME_OUT}"
   echo "Final default:  ${FINAL_CHECKPOINT}"
@@ -76,6 +84,9 @@ status() {
 case "${1:-help}" in
   train-2m)
     train_2m
+    ;;
+  train-fixed-2m)
+    train_fixed_2m
     ;;
   resume-3m)
     resume_3m

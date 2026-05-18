@@ -12,5 +12,5 @@ def register_custom_envs() -> None:
     gym.register(
         id=SIDE_BIN_ENV_ID,
         entry_point="robot_sorting_rl.envs.side_bin_place:FetchSideBinPlaceEnv",
-        max_episode_steps=50,
+        max_episode_steps=100,
     )

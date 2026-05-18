@@ -1,0 +1,10 @@
+[
+  {
+    "checkpoint": "checkpoints/side_bin_contact_safe_vec6_3p5m/FetchSideBinPlace_v0_sac_750000_steps.zip",
+    "env_id": "FetchSideBinPlace-v0",
+    "episodes": 100,
+    "mean_episode_length": 50.0,
+    "mean_reward": -50.0,
+    "success_rate": 0.0
+  }
+]

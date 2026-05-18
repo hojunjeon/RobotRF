@@ -905,6 +905,7 @@
 - 가정: 현재 단계에서는 Fetch 예제로 MuJoCo 로봇팔 렌더 가능 여부를 확인한다.
 ---
 
+
 ## 032 - 2026-05-15 KST - FetchSideBinPlace 좌표 기반 PNG 스냅샷 생성
 
 ### 오늘 한 일
@@ -1720,3 +1721,51 @@
 - 검증 불가: pytest, 실제 MuJoCo contact rollout 진단, 재학습 후 영상 확인
 - 가정: wall contact penalty는 실제 step reward에는 반영되지만 HER virtual transition reward에는 완전히 재현되지 않을 수 있다.
 ---
+
+## 038 - 2026-05-18 KST - Side bin 유효 학습을 위한 shaped reward 전환
+
+### 오늘 한 일
+- 750K, 1.0M, 1.25M rollout 영상을 프레임 비교해 cube가 거의 움직이지 않고 gripper가 접근/내려찍기 또는 bin 쪽 이탈 패턴에 고착되는 것을 확인했다.
+- sparse 성공 보상만으로는 접근, 접촉, lift, bin 방향 이동 같은 중간 행동이 학습 신호를 충분히 받지 못한다고 판단했다.
+- `FetchSideBinPlaceEnv`에 `shaped` reward를 추가했다.
+- 학습 기본 reward를 `shaped`로 바꾸고, episode 길이를 50 step에서 100 step으로 늘렸다.
+- 기존 실패 run과 분리해 새 실험을 시작할 수 있도록 `./rrf train-fixed-2m` 명령을 추가했다.
+
+### 막힌 문제
+- 기존 contact-safe resume run은 1.25M까지 봐도 cube를 유의미하게 옮기지 못해, 추가 학습만으로 해결될 가능성이 낮아 보였다.
+- Codex sandbox 내부에서는 `.venv-win` 실행기와 WSL 접근이 깨져 있어 프로젝트 venv 명령은 승인된 외부 실행으로 검증했다.
+- 전체 pytest는 기존 `docs/recording_handoff_log.md` 순번/섹션명 문제 2건으로 실패했다.
+
+### 해결 방법 / 결정
+- `reward_type="shaped"`를 학습 기본값으로 채택했다.
+- shaped reward는 object-to-bin 거리, object lift 보너스, gripper-to-object 거리, bin 내부 성공 보너스, wall contact penalty를 포함한다.
+- 평가/기존 sparse 성공 판정은 보존하고, 학습 시에는 shaped reward를 사용하도록 `scripts/train.py --reward-type` 옵션을 추가했다.
+- 새 실험 결과를 기존 checkpoint와 섞지 않기 위해 output/log 경로를 `checkpoints/side_bin_shaped_vec6_2m`, `runs/side_bin_shaped_vec6_2m`로 분리했다.
+
+### 남은 문제
+- shaped reward가 실제 장기 학습에서 cube 이동과 bin 투입 행동으로 이어지는지는 새 2M run의 250K/500K/750K 영상으로 확인해야 한다.
+- 기존 `side_bin_contact_safe_vec6_3p5m` run은 실패 패턴이 강하므로 포트폴리오에는 "실패 원인 분석 및 reward 재설계" 증거로만 쓰는 편이 안전하다.
+- `docs/recording_handoff_log.md`의 기존 순번 중복/깨진 섹션명 때문에 전체 pytest가 여전히 실패한다.
+
+### 증거
+- 코드 경로: `src/robot_sorting_rl/envs/side_bin_place.py`, `src/robot_sorting_rl/envs/__init__.py`, `src/robot_sorting_rl/training.py`, `scripts/train.py`, `rrf`, `README.md`
+- 테스트 경로: `tests/test_side_bin_place_env.py`, `tests/test_training_defaults.py`, `tests/test_rrf_cli.py`
+- 실행 명령: `.\.venv-win\Scripts\python.exe -m pytest tests\test_side_bin_place_env.py tests\test_training_defaults.py tests\test_robotics_training_path.py tests\test_check_runtime_script.py tests\test_rrf_cli.py -q`
+- 결과 로그/지표: `21 passed in 1.61s`
+- 실행 명령: `.\.venv-win\Scripts\python.exe scripts\train.py --env-id FetchSideBinPlace-v0 --algo sac --total-timesteps 20 --seed 42 --output-dir .omx\smoke_shaped --tensorboard-log .omx\smoke_runs --reward-type shaped --learning-starts 1000 --log-interval-steps 10 --checkpoint-interval 10`
+- 결과 로그/지표: 20-step smoke 학습 완료, `.omx\smoke_shaped\FetchSideBinPlace_v0_sac.zip` 저장
+- 실행 명령: `.\.venv-win\Scripts\ruff.exe check scripts\train.py scripts\check_runtime.py src\robot_sorting_rl\envs\__init__.py src\robot_sorting_rl\envs\side_bin_place.py src\robot_sorting_rl\training.py tests\test_rrf_cli.py tests\test_side_bin_place_env.py tests\test_training_defaults.py`
+- 결과 로그/지표: `All checks passed!`
+- 스크린샷/영상: `.omx/video_review/compare_750_1000_1250.jpg`, `videos/FetchSideBinPlace_v0_sac_750000_steps_rollout.mp4`, `videos/FetchSideBinPlace_v0_sac_1000000_steps_rollout.mp4`, `videos/FetchSideBinPlace_v0_sac_1250000_steps_rollout.mp4`
+- 체크포인트/학습 로그: 새 장기 학습 시작 명령은 `./rrf train-fixed-2m`, 저장 예정 경로는 `checkpoints/side_bin_shaped_vec6_2m`, TensorBoard 경로는 `runs/side_bin_shaped_vec6_2m`
+- 커밋: 아직 미커밋
+
+### 기록 담당 에이전트에게 강조할 관점
+- 채용 담당자: 실패한 RL run을 방치하지 않고 영상을 근거로 학습 신호 문제를 판단해 실험 설계를 수정했다는 점을 강조한다.
+- 기술 면접관: sparse reward + HER만으로 물체가 거의 움직이지 않는 환경에서는 relabel signal도 약하므로, shaped reward와 episode length 조정으로 탐색 가능성을 높였다는 의사결정을 설명한다.
+- 개발자 학습: 지표보다 사람 눈으로 rollout을 먼저 보고, 행동 고착을 발견한 뒤 테스트로 reward ordering을 고정하고 smoke train으로 실행 경로를 검증했다는 절차를 강조한다.
+
+### 검증 상태
+- 검증 완료: focused pytest 21개 통과, shaped reward 20-step smoke 학습 통과, Python 변경 파일 ruff 통과
+- 검증 불가: 새 2M 장기 학습의 실제 성공률/영상 개선은 아직 미측정
+- 가정: shaped reward가 cube 접근/이동/lift 행동의 학습 신호를 강화해 기존 sparse-only run보다 유효한 탐색을 만들 가능성이 높다.

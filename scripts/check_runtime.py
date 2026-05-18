@@ -9,6 +9,9 @@ def main() -> None:
 
     from robot_sorting_rl.envs import SIDE_BIN_ENV_ID, register_custom_envs
 
+    expected_env_id = "FetchSideBinPlace-v0"
+    assert SIDE_BIN_ENV_ID == expected_env_id
+
     gym.register_envs(gymnasium_robotics)
     register_custom_envs()
     env = gym.make(SIDE_BIN_ENV_ID, render_mode="rgb_array")

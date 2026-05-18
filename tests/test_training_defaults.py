@@ -18,6 +18,7 @@ def test_train_sac_keeps_single_env_as_default_and_exposes_parallel_controls() -
     signature = inspect.signature(train_sac)
 
     assert signature.parameters["n_envs"].default == 1
+    assert signature.parameters["reward_type"].default == "shaped"
     assert signature.parameters["batch_size"].default is None
     assert signature.parameters["buffer_size"].default is None
     assert signature.parameters["gradient_steps"].default is None
@@ -32,6 +33,7 @@ def test_train_script_exposes_parallel_training_cli_flags() -> None:
     script = Path("scripts/train.py").read_text(encoding="utf-8")
 
     assert "FetchSideBinPlace-v0" in script
+    assert "--reward-type" in script
     assert "--n-envs" in script
     assert "--batch-size" in script
     assert "--buffer-size" in script

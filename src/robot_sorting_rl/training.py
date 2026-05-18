@@ -7,36 +7,48 @@ from robot_sorting_rl.algorithms import create_model_config
 from robot_sorting_rl.envs import SIDE_BIN_ENV_ID, register_custom_envs
 
 
-def make_env(env_id: str = SIDE_BIN_ENV_ID, render_mode: str | None = None):
+def make_env(
+    env_id: str = SIDE_BIN_ENV_ID,
+    render_mode: str | None = None,
+    reward_type: str = "sparse",
+):
     import gymnasium as gym
     import gymnasium_robotics
 
     gym.register_envs(gymnasium_robotics)
     register_custom_envs()
-    return gym.make(env_id, render_mode=render_mode)
+    return gym.make(env_id, render_mode=render_mode, reward_type=reward_type)
 
 
-def _make_env_fn(env_id: str, seed: int, rank: int):
+def _make_env_fn(env_id: str, seed: int, rank: int, reward_type: str):
     def _init():
-        env = make_env(env_id=env_id)
+        env = make_env(env_id=env_id, reward_type=reward_type)
         env.reset(seed=seed + rank)
         return env
 
     return _init
 
 
-def make_training_env(env_id: str, seed: int, n_envs: int = 1):
+def make_training_env(
+    env_id: str,
+    seed: int,
+    n_envs: int = 1,
+    reward_type: str = "shaped",
+):
     if n_envs < 1:
         raise ValueError("n_envs must be at least 1")
     if n_envs == 1:
-        return make_env(env_id=env_id)
+        return make_env(env_id=env_id, reward_type=reward_type)
 
     import os
 
     from stable_baselines3.common.vec_env import SubprocVecEnv
 
     start_method = "spawn" if os.name == "nt" else "forkserver"
-    env_fns = [_make_env_fn(env_id=env_id, seed=seed, rank=rank) for rank in range(n_envs)]
+    env_fns = [
+        _make_env_fn(env_id=env_id, seed=seed, rank=rank, reward_type=reward_type)
+        for rank in range(n_envs)
+    ]
     return SubprocVecEnv(env_fns, start_method=start_method)
 
 
@@ -123,6 +135,7 @@ def train_sac(
     seed: int = 42,
     progress_bar: bool = False,
     n_envs: int = 1,
+    reward_type: str = "shaped",
     batch_size: int | None = None,
     buffer_size: int | None = None,
     gradient_steps: int | None = None,
@@ -136,7 +149,7 @@ def train_sac(
     from stable_baselines3.common.callbacks import CallbackList
     from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
 
-    env = make_training_env(env_id=env_id, seed=seed, n_envs=n_envs)
+    env = make_training_env(env_id=env_id, seed=seed, n_envs=n_envs, reward_type=reward_type)
     overrides = {}
     if batch_size is not None:
         overrides["batch_size"] = batch_size

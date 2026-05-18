@@ -8,6 +8,7 @@ def test_rrf_script_exposes_common_training_commands() -> None:
     script = RRF_SCRIPT.read_text(encoding="utf-8")
 
     assert "train-2m" in script
+    assert "train-fixed-2m" in script
     assert "resume-3m" in script
     assert "eval" in script
     assert "video" in script
@@ -22,6 +23,7 @@ def test_rrf_resume_command_uses_safe_resume_defaults() -> None:
     assert "--total-timesteps 3000000" in script
     assert "--checkpoint-interval 250000" in script
     assert "--learning-starts 510000" in script
+    assert "--reward-type shaped" in script
     assert "BASE_OUT=\"checkpoints/side_bin_contact_safe_vec6_2m\"" in script
     assert "FetchSideBinPlace_v0_sac_500000_steps.zip" in script
     assert "checkpoints/side_bin_contact_safe_vec6_3p5m" in script
